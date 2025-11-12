@@ -1,0 +1,304 @@
+@import "tailwindcss";
+
+@theme {
+  --font-body: "Inter", sans-serif;
+
+  --breakpoint-sm: 480px;
+  --breakpoint-md: 640px;
+  --breakpoint-lg: 834px;
+  --breakpoint-xl: 1280px;
+  --breakpoint-2xl: 1536px;
+  --breakpoint-3xl: 1728px;
+
+  --color-slate-100: hsl(0 0 100);
+  --color-slate-200: hsl(51 39 99);
+  --color-slate-300: hsl(55 47 97);
+  --color-slate-400: hsl(58 52 95);
+  --color-slate-500: hsl(58 57 91);
+  --color-slate-600: hsl(58 66 84);
+  --color-slate-700: hsl(58 72 70);
+  --color-slate-800: hsl(57 79 56);
+  --color-slate-900: hsl(57 89 40);
+
+  --color-primary-100: hsl(200 5 87);
+  --color-primary-200: hsl(202 12 77);
+  --color-primary-300: hsl(203 20 58);
+  --color-primary-400: hsl(203 26 44);
+  --color-primary-500: hsl(203 30 26);
+  --color-primary-600: hsl(203 49 22);
+  --color-primary-700: hsl(203 50 16);
+  --color-primary-800: hsl(203 63 12);
+  --color-primary-900: hsl(203 76 9);
+  --color-primary-1000: hsl(203 80 7);
+  --color-primary-1100: hsl(204 87 5);
+  --color-primary-1200: hsl(203 93 2);
+  --color-primary-1300: hsl(0 0 1);
+
+  --color-secondary-100: hsl(0 0 94);
+  --color-secondary-200: hsl(165 9 91);
+  --color-secondary-300: hsl(177 7 75);
+  --color-secondary-400: hsl(177 10 61);
+  --color-secondary-500: hsl(177 14 48);
+  --color-secondary-600: hsl(177 30 40);
+  --color-secondary-700: hsl(176 51 32);
+  --color-secondary-800: hsl(176 67 23);
+  --color-secondary-900: hsl(176 76 17);
+  --color-secondary-1000: hsl(176 82 12);
+  --color-secondary-1100: hsl(176 87 8);
+  --color-secondary-1200: hsl(177 91 5);
+  --color-secondary-1300: hsl(177 94 3);
+
+  --color-accent-one-100: hsl(105 6 97);
+  --color-accent-one-200: hsl(104 11 93);
+  --color-accent-one-300: hsl(104 15 86);
+  --color-accent-one-400: hsl(104 20 78);
+  --color-accent-one-500: hsl(104 28 68);
+  --color-accent-one-600: hsl(104 40 59);
+  --color-accent-one-700: hsl(104 57 46);
+  --color-accent-one-800: hsl(104 75 33);
+  --color-accent-one-900: hsl(104 83 24);
+  --color-accent-one-1000: hsl(104 89 16);
+  --color-accent-one-1100: hsl(104 93 10);
+  --color-accent-one-1200: hsl(104 95 7);
+  --color-accent-one-1300: hsl(104 97 4);
+
+  --color-accent-two-100: hsl(180 1 98);
+  --color-accent-two-200: hsl(144 4 94);
+  --color-accent-two-300: hsl(154 10 87);
+  --color-accent-two-400: hsl(152 9 74);
+  --color-accent-two-500: hsl(152 15 63);
+  --color-accent-two-600: hsl(152 27 52);
+  --color-accent-two-700: hsl(152 41 40);
+  --color-accent-two-800: hsl(152 56 32);
+  --color-accent-two-900: hsl(152 72 23);
+  --color-accent-two-1000: hsl(152 77 18);
+  --color-accent-two-1100: hsl(152 84 12);
+  --color-accent-two-1200: hsl(153 90 7);
+  --color-accent-two-1300: hsl(152 92 5);
+
+  --color-accent-three-100: hsl(0 0 92);
+  --color-accent-three-200: hsl(191 4 81);
+  --color-accent-three-300: hsl(191 10 69);
+  --color-accent-three-400: hsl(191 16 54);
+  --color-accent-three-500: hsl(191 23 36);
+  --color-accent-three-600: hsl(191 45 28);
+  --color-accent-three-700: hsl(191 64 20);
+  --color-accent-three-800: hsl(191 78 14);
+  --color-accent-three-900: hsl(191 81 10);
+  --color-accent-three-1000: hsl(191 90 8);
+  --color-accent-three-1100: hsl(191 90 6);
+  --color-accent-three-1200: hsl(191 92 4);
+  --color-accent-three-1300: hsl(191 96 1);
+
+  /* Based on Stratis UI design system*/
+  --text-label-regular: 0.625rem;
+  --text-label-regular--line-height: 0.75rem;
+  --text-label-regular--letter-spacing: 0.031em;
+
+  --text-label-medium: 0.625rem;
+  --text-label-medium--line-height: 0.75rem;
+  --text-label-medium--letter-spacing: 0.031em;
+
+  --text-label-semibold: 0.625rem;
+  --text-label-semibold--line-height: 0.75rem;
+  --text-label-semibold--letter-spacing: 0.031em;
+
+  --text-label-bold: 0.625rem;
+  --text-label-bold--line-height: 2.2rem;
+  --text-label-bold--letter-spacing: 0.031em;
+
+  --text-2xs-regular: 0.75rem;
+  --text-2xs-regular--line-height: 1.125rem;
+  --text-2xs-regular--letter-spacing: 0em;
+
+  --text-2xs-medium: 0.75rem;
+  --text-2xs-medium--line-height: 1.125rem;
+  --text-2xs-medium--letter-spacing: 0em;
+
+  --text-2xs-semibold: 0.75rem;
+  --text-2xs-semibold--line-height: 1.125rem;
+  --text-2xs-semibold--letter-spacing: 0em;
+
+  --text-2xs-bold: 0.75rem;
+  --text-2xs-bold--line-height: 2.2rem;
+  --text-2xs-bold--letter-spacing: 0em;
+
+  --text-xs-regular: 0.813rem;
+  --text-xs-regular--line-height: 1.125rem;
+  --text-xs-regular--letter-spacing: 0em;
+
+  --text-xs-medium: 0.813rem;
+  --text-xs-medium--line-height: 1.125rem;
+  --text-xs-medium--letter-spacing: 0em;
+
+  --text-xs-semibold: 0.813rem;
+  --text-xs-semibold--line-height: 1.125rem;
+  --text-xs-semibold--letter-spacing: 0em;
+
+  --text-xs-bold: 0.813rem;
+  --text-xs-bold--line-height: 2.2rem;
+  --text-xs-bold--letter-spacing: 0em;
+
+  --text-sm-regular: 0.875rem;
+  --text-sm-regular--line-height: 1.25rem;
+  --text-sm-regular--letter-spacing: -0.003em;
+
+  --text-sm-medium: 0.875rem;
+  --text-sm-medium--line-height: 1.25rem;
+  --text-sm-medium--letter-spacing: -0.003em;
+
+  --text-sm-semibold: 0.875rem;
+  --text-sm-semibold--line-height: 1.25rem;
+  --text-sm-semibold--letter-spacing: -0.003em;
+
+  --text-sm-bold: 0.875rem;
+  --text-sm-bold--line-height: 2.2rem;
+  --text-sm-bold--letter-spacing: -0.003em;
+
+  --text-base-regular: 1rem;
+  --text-base-regular--line-height: 1.375rem;
+  --text-base-regular--letter-spacing: -0.011em;
+
+  --text-base-medium: 1rem;
+  --text-base-medium--line-height: 1.375rem;
+  --text-base-medium--letter-spacing: -0.011em;
+
+  --text-base-semibold: 1rem;
+  --text-base-semibold--line-height: 1.375rem;
+  --text-base-semibold--letter-spacing: -0.011em;
+
+  --text-base-bold: 1rem;
+  --text-base-bold--line-height: 2.2rem;
+  --text-base-bold--letter-spacing: -0.011em;
+
+  --text-md-regular: 1.125rem;
+  --text-md-regular--line-height: 1.5rem;
+  --text-md-regular--letter-spacing: -0.011em;
+
+  --text-md-medium: 1.125rem;
+  --text-md-medium--line-height: 1.5rem;
+  --text-md-medium--letter-spacing: -0.016em;
+
+  --text-md-semibold: 1.125rem;
+  --text-md-semibold--line-height: 1.5rem;
+  --text-md-semibold--letter-spacing: -0.016em;
+
+  --text-md-bold: 1.125rem;
+  --text-md-bold--line-height: 2.2rem;
+  --text-md-bold--letter-spacing: -0.016em;
+
+  --text-lg-regular: 1.25rem;
+  --text-lg-regular--line-height: 1.75rem;
+  --text-lg-regular--letter-spacing: -0.013em;
+
+  --text-lg-medium: 1.25rem;
+  --text-lg-medium--line-height: 1.75rem;
+  --text-lg-medium--letter-spacing: -0.013em;
+
+  --text-lg-semibold: 1.25rem;
+  --text-lg-semibold--line-height: 2.4rem;
+  --text-lg-semibold--letter-spacing: -0.013em;
+
+  --text-lg-bold: 1.25rem;
+  --text-lg-bold--line-height: 2.2rem;
+  --text-lg-bold--letter-spacing: -0.013em;
+
+  --text-xl-regular: 1.5rem;
+  --text-xl-regular--line-height: 2rem;
+  --text-xl-regular--letter-spacing: -0.019em;
+
+  --text-xl-medium: 1.5rem;
+  --text-xl-medium--line-height: 1.75rem;
+  --text-xl-medium--letter-spacing: -0.013em;
+
+  --text-xl-semibold: 1.5rem;
+  --text-xl-semibold--line-height: 2.4rem;
+  --text-xl-semibold--letter-spacing: -0.013em;
+
+  --text-xl-bold: 1.5rem;
+  --text-xl-bold--line-height: 2.2rem;
+  --text-xl-bold--letter-spacing: -0.013em;
+
+  --text-2xl-regular: 2rem;
+  --text-2xl-regular--line-height: 2.5rem;
+  --text-2xl-regular--letter-spacing: -0.019em;
+
+  --text-2xl-medium: 2rem;
+  --text-2xl-medium--line-height: 2.4rem;
+  --text-2xl-medium--letter-spacing: -0.019em;
+
+  --text-2xl-semibold: 2rem;
+  --text-2xl-semibold--line-height: 2.4rem;
+  --text-2xl-semibold--letter-spacing: -0.019em;
+
+  --text-2xl-bold: 2rem;
+  --text-2xl-bold--line-height: 2.2rem;
+  --text-2xl-bold--letter-spacing: -0.019em;
+
+  --text-3xl-regular: 2.25rem;
+  --text-3xl-regular--line-height: 2.75rem;
+  --text-3xl-regular--letter-spacing: -0.019em;
+
+  --text-3xl-medium: 2.25rem;
+  --text-3xl-medium--line-height: 2.4rem;
+  --text-3xl-medium--letter-spacing: -0.019em;
+
+  --text-3xl-semibold: 2.25rem;
+  --text-3xl-semibold--line-height: 2.4rem;
+  --text-3xl-semibold--letter-spacing: -0.019em;
+
+  --text-3xl-bold: 2.25rem;
+  --text-3xl-bold--line-height: 2.2rem;
+  --text-3xl-bold--letter-spacing: -0.019em;
+
+  --text-4xl-regular: 3rem;
+  --text-4xl-regular--line-height: 4.5rem;
+  --text-4xl-regular--letter-spacing: -0.019em;
+
+  --text-4xl-medium: 3rem;
+  --text-4xl-medium--line-height: 2.4rem;
+  --text-4xl-medium--letter-spacing: -0.019em;
+
+  --text-4xl-semibold: 3rem;
+  --text-4xl-semibold--line-height: 2.4rem;
+  --text-4xl-semibold--letter-spacing: -0.019em;
+
+  --text-4xl-bold: 3rem;
+  --text-4xl-bold--line-height: 2.2rem;
+  --text-4xl-bold--letter-spacing: -0.019em;
+}
+@layer base {
+  @font-face {
+    font-family: "Inter";
+    font-weight: 700;
+    src: url("/fonts/Inter-Bold.otf") format("opentype");
+  }
+
+  @font-face {
+    font-family: "Inter";
+    font-weight: 600;
+    src: url("/fonts/Inter-SemiBold.otf") format("opentype");
+  }
+
+  @font-face {
+    font-family: "Inter";
+    font-weight: 500;
+    src: url("/fonts/Inter-Medium.otf") format("opentype");
+  }
+
+  @font-face {
+    font-family: "Inter";
+    font-weight: 400;
+    src: url("/fonts/Inter-Regular.otf") format("opentype");
+  }
+
+  html,
+  body {
+    min-height: 100vh;
+    min-height: 100dvh;
+    background-color: var(--color-slate-200);
+    font-family: var(--font-body);
+    font-weight: 400;
+    font-size: var(--text-base);
+  }
+}
