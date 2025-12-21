@@ -56,10 +56,4 @@ export class UserRepositoryError extends ApplicationError {
     // TODO: Must implement pino for logging
     console.log(`[UserRepositoryError]: ${this.message}`, this.context);
   }
-
-  static unrecognizedDBClient() {
-    return new UserRepositoryError("Unrecognized database client instance", {
-      expected: ["PrismaClient"],
-    });
-  }
 }
