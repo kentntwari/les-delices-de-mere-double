@@ -1,0 +1,24 @@
+{
+  "welcome": "Bienvenue",
+  "signIn": "Connectez-vous pour commencer",
+  "links": {
+    "orders": "Commandes",
+    "customers": "Clients",
+    "menu": "Menu"
+  },
+  "banner": {
+    "pending-status": "Vous n'avez pas encore été entièrement autorisé à interagir avec l'application. Contactez votre administrateur pour plus d'informations."
+  },
+  "unauthorized": {
+    "heading": "Vous n'êtes pas censé être ici.",
+    "footer": "Contactez votre administrateur pour plus d'informations."
+  },
+  "errors": {
+    "user": {
+      "unauthorized": "Vous n'êtes pas autorisé à accéder à cette ressource.",
+      "forbidden": "Vous n'avez pas la permission d'accéder à cette ressource.",
+      "not-found": "Vos informations n'ont pas pu être trouvées.",
+      "status-rejected": "Votre accès a été refusé. Veuillez contacter votre administrateur pour plus d'informations."
+    }
+  }
+}

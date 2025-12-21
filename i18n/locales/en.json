@@ -1,0 +1,24 @@
+{
+  "welcome": "Welcome",
+  "signIn": "Sign in to get started",
+  "links": {
+    "orders": "Orders",
+    "customers": "Customers",
+    "menu": "Menu"
+  },
+  "banner": {
+    "pending-status": "You have not been fully authorized to interact with the app yet. Follow up with your administrator for more information."
+  },
+  "unauthorized": {
+    "heading": "You're not supposed to be here.",
+    "footer": "Contact your administrator for more information."
+  },
+  "errors": {
+    "user": {
+      "unauthorized": "You are not authorized to access this resource.",
+      "forbidden": "You do not have permission to access this resource.",
+      "not-found": "Your information could not be found.",
+      "status-rejected": "Your access has been rejected. Please contact your administrator for more information."
+    }
+  }
+}
