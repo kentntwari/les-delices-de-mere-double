@@ -1,4 +1,7 @@
 @import "tailwindcss";
+@import "tw-animate-css";
+/* ---break---*/
+@custom-variant dark (&:is(.dark *));
 
 @theme {
   --font-body: "Inter", sans-serif;
@@ -9,6 +12,23 @@
   --breakpoint-xl: 1280px;
   --breakpoint-2xl: 1536px;
   --breakpoint-3xl: 1728px;
+
+  --color-app-background: hsl(53 40 96);
+  --color-app-navigation-background: hsl(104 20 78 / 20%);
+
+  --color-neutral-grey-100: hsl(0 0 99);
+  --color-neutral-grey-200: hsl(0 0 97);
+  --color-neutral-grey-300: hsl(0 0 95);
+  --color-neutral-grey-400: hsl(240 3 93);
+  --color-neutral-grey-500: hsl(0 0 90);
+  --color-neutral-grey-600: hsl(240 3 87);
+  --color-neutral-grey-700: hsl(240 3 79);
+  --color-neutral-grey-800: hsl(255 2 68);
+  --color-neutral-grey-900: hsl(260 2 50);
+  --color-neutral-grey-1000: hsl(255 5 32);
+  --color-neutral-grey-1100: hsl(257 8 18);
+  --color-neutral-grey-1200: hsl(255 7 12);
+  --color-neutral-grey-1300: hsl(270 10 4);
 
   --color-slate-100: hsl(0 0 100);
   --color-slate-200: hsl(51 39 99);
@@ -267,38 +287,144 @@
   --text-4xl-bold--line-height: 2.2rem;
   --text-4xl-bold--letter-spacing: -0.019em;
 }
+
 @layer base {
   @font-face {
     font-family: "Inter";
     font-weight: 700;
-    src: url("/fonts/Inter-Bold.otf") format("opentype");
+    src: url("/assets/fonts/Inter-Bold.otf") format("opentype");
   }
 
   @font-face {
     font-family: "Inter";
     font-weight: 600;
-    src: url("/fonts/Inter-SemiBold.otf") format("opentype");
+    src: url("/assets/fonts/Inter-SemiBold.otf") format("opentype");
   }
 
   @font-face {
     font-family: "Inter";
     font-weight: 500;
-    src: url("/fonts/Inter-Medium.otf") format("opentype");
+    src: url("/assets/fonts/Inter-Medium.otf") format("opentype");
   }
 
   @font-face {
     font-family: "Inter";
     font-weight: 400;
-    src: url("/fonts/Inter-Regular.otf") format("opentype");
+    src: url("/assets/fonts/Inter-Regular.otf") format("opentype");
   }
 
   html,
   body {
     min-height: 100vh;
     min-height: 100dvh;
-    background-color: var(--color-slate-200);
+    background-color: var(--color-app-background);
     font-family: var(--font-body);
     font-weight: 400;
     font-size: var(--text-base);
+    color: var(--color-neutral-grey-900);
   }
+
+  .container{
+    @apply mx-auto 2xl:px-[70px]
+  }
+}
+
+@layer utilities {
+  /* HTML: <div class="loader"></div> */
+  .loader {
+    width: 50px;
+    padding: 8px;
+    aspect-ratio: 1;
+    border-radius: 50%;
+    background: var(--color-primary-700);
+    --_m: conic-gradient(#0000 10%, #000), linear-gradient(#000 0 0) content-box;
+    -webkit-mask: var(--_m);
+    mask: var(--_m);
+    -webkit-mask-composite: source-out;
+    mask-composite: subtract;
+    animation: l3 1s infinite linear;
+  }
+  @keyframes l3 {
+    to {
+      transform: rotate(1turn);
+    }
+  }
+}
+
+/* ---break---*/
+
+@theme inline {
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+}
+
+/* ---break---*/
+
+:root {
+  --radius: 0.625rem;
+  --background: var(--color-slate-200);
+  --foreground: var(--color-neutral-grey-900)
+  --card: var(--color-slate-200);
+  --card-foreground: var(--color-neutral-grey-900);
+  --popover: var(--color-slate-200);
+  --popover-foreground: var(--color-neutral-grey-900);
+  --primary: var(--color-primary-500);
+  --primary-foreground: var(--color-primary-1300);
+  --secondary: var(--color-secondary-200);
+  --secondary-foreground: var(--color-secondary-1300);
+  --muted: var(--color-neutral-grey-900);
+  --muted-foreground: var(--color-neutral-grey-1000);
+  --accent: var(--color-accent-one-500);
+  --accent-foreground: var(--color-accent-one-1100);
+  --destructive: var(--color-red-700);
+  --border: var(--color-neutral-grey-600);
+  --input: var(--color-neutral-grey-900);
+  --ring: oklch(0.704 0.04 256.788);
+  --chart-1: oklch(0.646 0.222 41.116);
+  --chart-2: oklch(0.6 0.118 184.704);
+  --chart-3: oklch(0.398 0.07 227.392);
+  --chart-4: oklch(0.828 0.189 84.429);
+  --chart-5: oklch(0.769 0.188 70.08);
+  --sidebar: var(--color-slate-200)
+  --sidebar-foreground: var(--color-neutral-grey-900);
+  --sidebar-primary: var(--color-primary-500);
+  --sidebar-primary-foreground: var(--color-primary-1300);
+  --sidebar-accent: var(--color-accent-one-500);
+  --sidebar-accent-foreground: var(--color-accent-one-1100);
+  --sidebar-border: var(--color-neutral-grey-600);
+  --sidebar-ring: var(--color-primary-500);
+
 }
