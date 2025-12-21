@@ -1,0 +1,127 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id          String          @id @default(cuid())
+  email       String          @unique
+  name        String
+  status      WhitelistStatus @default(PENDING)
+  role        Role            @default(USER)
+  permissions Permissions[]
+  createdAt   DateTime        @default(now()) @map("created_at")
+  updatedAt   DateTime        @updatedAt @map("updated_at")
+
+  @@index([id, email], name: "user_id_email_idx")
+  @@map("users")
+}
+
+model Customer {
+  id         String   @id @default(cuid())
+  name       String
+  email      String   @unique
+  phone      String?
+  street     String?  @map("address_street")
+  city       String?  @map("address_city")
+  state      String?  @map("address_state")
+  postalCode String?  @map("address_postal_code")
+  orders     Order[]
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  @@index([id, email, phone], name: "customer_id_email_phone_idx")
+  @@map("customers")
+}
+
+model Order {
+  id            String        @id @default(cuid())
+  items         MenuItem[]
+  status        OrderStatus   @default(NOT_STARTED) @map("status")
+  paymentStatus PaymentStatus @default(UNPAID) @map("payment_status")
+  deliveryFee   Float         @default(0.0) @map("delivery_fee")
+  customer      Customer?     @relation(fields: [customerId], references: [id])
+  customerId    String?       @map("customer_id")
+  orderLogs     OrderLogs[]
+  createdAt     DateTime      @default(now()) @map("created_at")
+  updatedAt     DateTime      @updatedAt @map("updated_at")
+
+  @@index([id], name: "order_id_idx")
+  @@map("orders")
+}
+
+model OrderLogs {
+  id        String   @id @default(cuid())
+  message   String   @db.Text
+  order     Order    @relation(fields: [orderId], references: [id])
+  orderId   String   @unique @map("order_id")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([id, orderId], name: "order_logs_id_order_id_idx")
+  @@map("order_logs")
+}
+
+model MenuItem {
+  id          String   @id @default(cuid())
+  title       String   @db.VarChar(300)
+  slug        String   @unique
+  description String?
+  price       Float
+  orders      Order[]
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@index([id, slug], name: "menu_item_id_slug_idx")
+  @@map("menu_items")
+}
+
+enum Role {
+  USER
+  SUPERUSER
+  ADMIN
+}
+
+enum Permissions {
+  READ_ORDERS
+  READ_CUSTOMERS
+  READ_USERS
+  READ_MENU
+  UPDATE_ORDERS
+  UPDATE_CUSTOMERS
+  UPDATE_USERS
+  UPDATE_MENU
+  DELETE_ORDERS
+  DELETE_CUSTOMERS
+  DELETE_USERS
+  DELETE_MENU
+}
+
+enum OrderStatus {
+  NOT_STARTED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+enum PaymentStatus {
+  UNPAID
+  PAID
+  VOIDED
+}
+
+enum WhitelistStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
