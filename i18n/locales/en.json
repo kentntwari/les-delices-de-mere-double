@@ -20,5 +20,48 @@
       "not-found": "Your information could not be found.",
       "status-rejected": "Your access has been rejected. Please contact your administrator for more information."
     }
+  },
+  "data": {
+    "no-orders": "No order added yet",
+    "no-customers": "No customers added yet",
+    "no-menu-items": "No items added yet"
+  },
+  "components": {
+    "button": {
+      "create-new": "Create New"
+    },
+    "order": {
+      "create-panel": {
+        "title": "Create new order",
+        "menu": {
+          "no-menu-header": "Unable to create order",
+          "no-items": "No items menu found.",
+          "add-item-prompt": "Before you can create an order, you must first add at least one item to your menu.",
+          "no-menu-link": " Go to Menu"
+        },
+        "items-list": {
+          "no-items": "No items added to the order yet.",
+          "button-add-items": "Add Item",
+          "remove-item": "Remove Item"
+        },
+        "submit-button": {
+          "final": "Create",
+          "next": "Continue"
+        },
+        "restart-button": "Restart"
+      }
+    },
+    "menu": {
+      "form": {
+        "label": "Label",
+        "title": "Title of the menu item",
+        "submit-button": "Save"
+      }
+    }
+  },
+  "pages": {
+    "menu": {
+      "header-title": "Menu items added"
+    }
   }
 }

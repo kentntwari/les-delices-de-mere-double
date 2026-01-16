@@ -20,5 +20,48 @@
       "not-found": "Vos informations n'ont pas pu être trouvées.",
       "status-rejected": "Votre accès a été refusé. Veuillez contacter votre administrateur pour plus d'informations."
     }
+  },
+  "data": {
+    "no-orders": "Aucune commande ajoutée pour le moment",
+    "no-customers": "Aucun client ajouté pour le moment",
+    "no-menu-items": "Aucun article ajouté pour le moment"
+  },
+  "components": {
+    "button": {
+      "create-new": "Créer Nouveau"
+    },
+    "order": {
+      "create-panel": {
+        "title": "Créer une Nouvelle Commande",
+        "menu": {
+          "no-menu-header": "Impossible de créer une commande",
+          "no-items": "Aucun article de menu trouvé.",
+          "add-item-prompt": "Avant de pouvoir créer une commande, vous devez d'abord ajouter au moins un article à votre menu.",
+          "no-menu-link": " Aller au Menu"
+        },
+        "items-list": {
+          "no-items": "Aucun article ajouté à la commande pour le moment.",
+          "button-add-items": "Ajouter Article",
+          "remove-item": "Supprimer Article"
+        },
+        "submit-button": {
+          "final": "Créer",
+          "next": "Continuer"
+        },
+        "restart-button": "Refaire"
+      }
+    },
+    "menu": {
+      "form": {
+        "label": "Étiquette",
+        "title": "Titre de l'article du menu",
+        "submit-button": "Enregistrer"
+      }
+    }
+  },
+  "pages":{
+    "menu":{
+      "header-title": "Articles ajoutés"
+    }
   }
 }
