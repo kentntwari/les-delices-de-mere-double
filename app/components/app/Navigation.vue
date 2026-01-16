@@ -1,4 +1,7 @@
 <script lang="ts" setup>
+  import { useI18n } from "#imports";
+  import { UserRound } from "lucide-vue-next";
+
   interface Props {
     currentStatus: IUserMeta["status"];
   }
@@ -6,6 +9,7 @@
   defineProps<Props>();
 
   const { isSignedIn } = useAuth();
+  const { user } = useUser();
 
   const { locale, locales } = useI18n();
 </script>
@@ -41,6 +45,7 @@
           class="block lg:w-24"
           src="/assets/logo/les-delices-de-mere-double.svg"
           alt="Les Délices de Mère-Double"
+          fetchpriority="high"
         />
       </figure>
       <UISelect :default-value="locale">
@@ -71,10 +76,19 @@
           >
         </UISelectContent>
       </UISelect>
+
+      <UIAvatar v-show="isSignedIn" class="lg:ml-4 lg:size-10">
+        <UIAvatarImage :src="user?.imageUrl ?? ''" />
+        <UIAvatarFallback
+          class="bg-neutral-grey-200 border border-neutral-grey-500"
+        >
+          <UserRound :size="24" class="text-neutral-grey-700" />
+        </UIAvatarFallback>
+      </UIAvatar>
     </nav>
     <div
       v-show="currentStatus === 'PENDING'"
-      class="w-full lg:h-12 flex items-center  bg-accent-one-200 text-neutral-grey-900"
+      class="w-full lg:h-12 flex items-center bg-accent-one-200 text-neutral-grey-900"
       role="banner"
     >
       <p class="container text-sm">
