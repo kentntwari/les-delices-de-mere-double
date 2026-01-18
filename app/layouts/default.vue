@@ -1,10 +1,15 @@
 <script setup lang="ts">
-  import type { TNuxtErrorCause } from "~/types";
-  import { INJECT_FIRST_INTERACTION } from "@/app.keys";
+  import type { TNuxtErrorCause, TProvidedInteractionState } from "~/types";
+  import {
+    FIRST_INTERACTION_COOKIE,
+    INJECT_FIRST_INTERACTION,
+    READ_ONLY_USER_STATUS,
+  } from "@/app.keys";
+  import { UserEntity } from "~~/mvc/entities/user";
 
   const { isSignedIn, userId, isLoaded } = useAuth();
 
-  const isFirstAppInteraction = useCookie("__client_first__app__interaction", {
+  const isFirstAppInteraction = useCookie(FIRST_INTERACTION_COOKIE, {
     default: () => "true",
     watch: "shallow",
     maxAge: 60 * 60 * 24 * 365, // 1 year
@@ -12,14 +17,14 @@
   });
 
   // WARNING: Must never be accessed
-  const userStatus = useState<IUserMeta["status"]>("__READ_ONLY__USER_STATUS");
+  const userStatus = useState<IUserMeta["status"]>(READ_ONLY_USER_STATUS);
   await callOnce(async () => {
     // FIX: Must throw if api shape response is not what we expect
     if (isSignedIn.value) {
-      const api = await $fetch<{ status: IUserMeta["status"] }>(
+      const api = await $fetch<{ data: UserEntity["_status"] }>(
         "/api/user/" + userId.value + "/status"
       );
-      userStatus.value = api.status;
+      userStatus.value = api.data;
 
       if (userStatus.value === "REJECTED") {
         showError({
@@ -38,8 +43,10 @@
     isFirstAppInteraction.value = "false";
   }
 
-  provide(INJECT_FIRST_INTERACTION, {
-    t: isFirstAppInteraction.value,
+  provide<TProvidedInteractionState>(INJECT_FIRST_INTERACTION, {
+    isFirstInteraction: computed(
+      () => isFirstAppInteraction.value as "true" | "false"
+    ),
     markAppAsInteracted,
   });
 </script>
@@ -67,11 +74,12 @@
         <slot />
       </template>
 
-      <footer class="container lg:mb-6 text-neutral-grey-1000">
+      <footer class="container flex lg:mb-6 text-neutral-grey-1000">
         <small class="inline-block">
           <Icon name="lucide:copyright" size="18" />
         </small>
         <small class="inline-block ml-1">Copyright 2025</small>
+        <small class="block flex-1 text-right"> Designed by Kent Ntwari </small>
       </footer>
     </div>
   </div>
