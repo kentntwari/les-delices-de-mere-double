@@ -1,16 +1,24 @@
 <script lang="ts" setup>
-import type { ToasterProps } from "vue-sonner"
-import { CircleCheckIcon, InfoIcon, Loader2Icon, OctagonXIcon, TriangleAlertIcon, XIcon } from "lucide-vue-next"
-import { Toaster as Sonner } from "vue-sonner"
-import { cn } from '@/utils/cn'
+  import type { ToasterProps } from "vue-sonner";
+  import {
+    CircleCheckIcon,
+    InfoIcon,
+    Loader2Icon,
+    OctagonXIcon,
+    TriangleAlertIcon,
+    XIcon,
+  } from "lucide-vue-next";
+  import { Toaster as Sonner } from "vue-sonner";
+  import { cn } from "@/utils/cn";
 
-const props = defineProps<ToasterProps>()
+  const props = defineProps<ToasterProps>();
 </script>
 
 <template>
   <Sonner
     :class="cn('toaster group', props.class)"
     :style="{
+      '--width': '600px',
       '--normal-bg': 'var(--popover)',
       '--normal-text': 'var(--popover-foreground)',
       '--normal-border': 'var(--border)',
