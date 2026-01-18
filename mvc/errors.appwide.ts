@@ -1,3 +1,7 @@
+import { createLogger } from "../server/utils/logger";
+
+const log = createLogger("mvc.errors.appwide");
+
 export class NetworkError extends Error {
   constructor(
     message: string,
@@ -7,8 +11,7 @@ export class NetworkError extends Error {
     super(message);
     this.name = "NETWORK ERROR";
     this.context = context;
-    // TODO: Must implement pino for logging
-    console.log(`[NetworkError]: ${this.message}`, this.context);
+    log.error({ err: this, context, source }, message);
   }
 }
 
@@ -21,7 +24,6 @@ export class ApplicationError extends Error {
     super(message);
     this.name = "APPLICATION ERROR";
     this.context = context;
-    // TODO: Must implement pino for logging
-    console.log(`[ApplicationError]: ${this.message}`, this.context);
+    log.error({ err: this, context, source }, message);
   }
 }
