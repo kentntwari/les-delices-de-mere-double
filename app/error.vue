@@ -27,14 +27,15 @@
   // INFO: Refer to errorMap in shared/utils/errorMap.ts
   // FIX: Must properly translate error messages based on error codes
   function matchErrorCause(
-    cause: NonNullable<NuxtErrorWithCause["data"]>["cause"]
+    cause: NonNullable<NuxtErrorWithCause["data"]>["cause"] | undefined,
+    defaultErrorMsg: string
   ) {
-    if (!cause) return "some untranslated error occurred";
+    if (!cause) return defaultErrorMsg;
     switch (cause) {
       case "user.status.rejected":
         return $t("errors.user.status-rejected");
       default:
-        return "some untranslated error occurred";
+        return defaultErrorMsg;
     }
   }
 </script>
@@ -58,7 +59,10 @@
           class="block max-w-prose lg:max-w-lg text-center font-regular text-pretty"
           >{{
             locale !== "en" && canTranslate
-              ? matchErrorCause(props.error.data!.cause)
+              ? matchErrorCause(
+                  props.error.data!.cause,
+                  props.error.statusMessage || props.error.message
+                )
               : props.error.statusMessage
           }}</span
         >
