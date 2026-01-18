@@ -46,7 +46,7 @@ model Customer {
 
 model Order {
   id            String        @id @default(cuid())
-  items         MenuItem[]
+  items         OrderedItem[]
   status        OrderStatus   @default(NOT_STARTED) @map("status")
   paymentStatus PaymentStatus @default(UNPAID) @map("payment_status")
   deliveryFee   Float         @default(0.0) @map("delivery_fee")
@@ -71,15 +71,29 @@ model OrderLogs {
   @@map("order_logs")
 }
 
+model OrderedItem {
+  id        String   @id @default(cuid())
+  item      MenuItem @relation(fields: [itemId], references: [id])
+  itemId    String   @map("item_id")
+  quantity  Int      @default(1)
+  order     Order?   @relation(fields: [orderId], references: [id])
+  orderId   String?
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([id, itemId, orderId], name: "ordered_item_id_order_id_idx")
+  @@map("ordered_items")
+}
+
 model MenuItem {
-  id          String   @id @default(cuid())
-  title       String   @db.VarChar(300)
-  slug        String   @unique
+  id          String        @id @default(cuid())
+  title       String        @db.VarChar(300)
+  slug        String        @unique
   description String?
-  price       Float
-  orders      Order[]
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @updatedAt @map("updated_at")
+  unitPrice   Float         @map("unit_price")
+  orderItems  OrderedItem[]
+  createdAt   DateTime      @default(now()) @map("created_at")
+  updatedAt   DateTime      @updatedAt @map("updated_at")
 
   @@index([id, slug], name: "menu_item_id_slug_idx")
   @@map("menu_items")
