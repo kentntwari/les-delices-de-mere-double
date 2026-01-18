@@ -1,7 +1,12 @@
-import { errorMap } from "~~/shared/utils/errorMap";
+import { errorMap } from "../../shared/utils/errorMap";
+import { createLogger } from "../../server/utils/logger";
 import { ApplicationError, NetworkError } from "../errors.appwide";
+
+const log = createLogger("mvc.controllers.base");
+
+export type TReturnJSONData = { data: any };
 export type PossibleResponse =
-  | JsonResponse
+  | JsonResponse<TReturnJSONData>
   | SuccessResponse
   | NotFoundResponse
   | BadRequestResponse
@@ -36,14 +41,10 @@ export class SilentSuccessResponse extends Response {
   }
 }
 
-export class JsonResponse extends Response {
+export class JsonResponse<K extends TReturnJSONData> extends Response {
   public readonly name = "JSON RESPONSE";
 
-  constructor(
-    public data: {},
-    status: number = 200,
-    headers: HeadersInit = {}
-  ) {
+  constructor(public data: K, status: number = 200, headers: HeadersInit = {}) {
     super(JSON.stringify(data), {
       status,
       headers: { "Content-Type": "application/json", ...headers },
@@ -129,6 +130,7 @@ export class InternalServerErrorResponse extends Response {
 export abstract class BaseController {
   constructor(readonly req: Request) {
     // this.logRequest();
+    this.ensureJsonContentType();
   }
 
   protected get method(): string {
@@ -143,22 +145,102 @@ export abstract class BaseController {
     return this.req.headers;
   }
 
-  // Todo: implement pino
-  // protected logRequest(): void {
-  //   // Universal header extraction that works with any format
-  //   const headersObj: Record<string, string> = {};
+  protected ensureJsonContentType(): void {
+    const method = this.method?.toUpperCase?.() ?? "";
+    // Only enforce JSON content-type for methods that are expected to carry a body
+    if (!["POST", "PUT", "PATCH"].includes(method)) return;
 
-  //   if (this.headers instanceof Headers) {
-  //     this.headers.forEach((value, key) => {
-  //       headersObj[key] = value;
-  //     });
-  //   } else if (typeof this.headers === "object" && this.headers !== null) {
-  //     Object.assign(headersObj, this.headers);
-  //   }
-  // }
+    const raw = this.headers?.get?.("content-type") ?? "";
+    const contentType = raw.toLowerCase().trim();
 
-  // Todo: Must implement pino for logging
-  protected logError(error: unknown, context?: object): void {}
+    // Accept standard JSON and vendor-specific types like application/*+json
+    const isJson =
+      contentType.includes("application/json") || contentType.includes("+json");
+
+    if (!isJson) {
+      throw new BadRequestResponse(
+        errorMap.app.general.BAD_REQUEST,
+        {},
+        {
+          expectedContentType: "application/json or application/*+json",
+          receivedContentType: contentType || "none",
+          method,
+        }
+      );
+    }
+  }
+
+  /**
+   * Parses the request body as JSON.
+   *
+   * Gotchas:
+   * - `req.json()` throws on empty bodies, so clients must send `{}` at minimum
+   *   for POST/PUT/PATCH requests (no silent `null` return for empty payloads).
+   * - Body stream can only be consumed once; calling this method twice will fail.
+   */
+  protected async getBody(): Promise<unknown> {
+    const method = this.method?.toUpperCase?.() ?? "";
+    if (["GET", "HEAD"].includes(method)) return null;
+
+    try {
+      return await this.req.json();
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+
+      switch (true) {
+        // Malformed or empty JSON payload
+        case e instanceof SyntaxError:
+        case /invalid json/i.test(msg):
+        case /unexpected end of json input/i.test(msg):
+          throw new BadRequestResponse(
+            errorMap.app.general.BAD_REQUEST,
+            {},
+            {
+              method,
+              error: msg,
+              cause: "Invalid JSON payload",
+            }
+          );
+
+        // Body was already consumed
+        case e instanceof TypeError &&
+          /already been (read|consumed|used)/i.test(msg):
+          throw new InternalServerErrorResponse(
+            errorMap.app.general.INTERNAL_SERVER_ERROR,
+            {
+              method,
+              error: msg,
+              cause: "Request body stream already consumed",
+            }
+          );
+
+        // Request aborted while reading
+        case (e as any)?.name === "AbortError":
+          throw new InternalServerErrorResponse(
+            errorMap.sys.general.INTERNAL_SERVER_ERROR,
+            {
+              method,
+              error: msg,
+              cause: "Request aborted while reading body",
+            }
+          );
+
+        default:
+          throw new InternalServerErrorResponse(
+            errorMap.sys.general.INTERNAL_SERVER_ERROR,
+            {
+              method,
+              error: msg,
+            }
+          );
+      }
+    }
+  }
+
+  protected logError(error: unknown, context?: object): void {
+    const errorObj = error instanceof Error ? error : new Error(String(error));
+    log.error({ err: errorObj, ...context }, errorObj.message);
+  }
 
   protected async authenticate(): Promise<void> {}
   protected async authorize(): Promise<void> {}

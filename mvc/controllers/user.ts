@@ -1,4 +1,5 @@
-import { errorMap } from "~~/shared/utils/errorMap";
+import { errorMap } from "../../shared/utils/errorMap";
+import { createLogger } from "../../server/utils/logger";
 import { UserService } from "../service/user";
 import {
   BaseController,
@@ -10,8 +11,10 @@ import {
 
 interface IReadUserArgs {
   userId: string;
-  intent: "GET_STATUS";
+  intent: "GET_STATUS" | "GET_PERMISSIONS";
 }
+
+const log = createLogger("mvc.controllers.user");
 
 export class UserController extends BaseController {
   constructor(req: Request, private service: UserService = new UserService()) {
@@ -29,11 +32,16 @@ export class UserController extends BaseController {
       else
         switch (true) {
           case args.intent === "GET_STATUS":
-            return new JsonResponse({ status: user.status });
+            return new JsonResponse({ data: user.status });
+
+          case args.intent === "GET_PERMISSIONS":
+            return new JsonResponse({ data: user.permissions });
 
           default:
-            // TODO: Implement logging for unexpected intent
-            console.log(`[INVALID INTENT]:[UNPROCESSABLE], ${args.intent}`);
+            log.warn(
+              { intent: args.intent, userId: args.userId },
+              "Invalid intent received"
+            );
             return new BadRequestResponse(
               errorMap.app.general.UNABLE_TO_PROCESS
             );
