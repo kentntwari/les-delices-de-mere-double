@@ -2,7 +2,6 @@ import type { User as UserModel, PrismaClient } from "@prisma/client";
 
 import { UserEntity } from "../entities/user";
 
-import { ApplicationError } from "../errors.appwide";
 import { DatabaseError } from "../errors.db";
 
 import { db as defaultDbClient } from "../../server/utils/db";
@@ -25,6 +24,7 @@ export class UserRepository implements IUserRepository {
       throw new DatabaseError("Failed to get user from database", {
         operation: "getUser",
         userId: id,
+        error,
       });
     }
   }
@@ -44,16 +44,8 @@ export class UserRepository implements IUserRepository {
     } catch (error) {
       throw new DatabaseError("Failed to create user in database", {
         operation: "createUser",
+        error,
       });
     }
-  }
-}
-
-export class UserRepositoryError extends ApplicationError {
-  constructor(message: string, context: Record<string, unknown> = {}) {
-    super(message, context, "repository.user");
-    this.name = "USER REPOSITORY ERROR";
-    // TODO: Must implement pino for logging
-    console.log(`[UserRepositoryError]: ${this.message}`, this.context);
   }
 }
