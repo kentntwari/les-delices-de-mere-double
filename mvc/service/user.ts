@@ -1,69 +1,37 @@
-import { CreateUserFactoryError } from "../factories/user";
+import { BaseService } from "./base";
 import { UserRepository } from "../repository/user";
-import { ApplicationError, NetworkError } from "../errors.appwide";
-import { DatabaseError } from "../errors.db";
-import {
-  type IFactoryStrategyMap,
-  FactoryStrategy,
-} from "../factories/strategy";
+import { UserMapper } from "../mapper/user";
+import { UserFactory } from "../factories/user";
 
-import { type IMapperStrategyMap, MapperStrategy } from "../mapper/strategy";
-
-export class UserService {
+export class UserService extends BaseService {
   constructor(
     private repository: UserRepository = new UserRepository(),
-    private factory: IFactoryStrategyMap = FactoryStrategy,
-    private mapper: IMapperStrategyMap = MapperStrategy
-  ) {}
+    private factory: UserFactory = new UserFactory(),
+    private mapper: UserMapper = new UserMapper()
+  ) {
+    super();
+  }
 
   async readUser(id: string) {
     try {
       const model = await this.repository.getUser(id);
 
       if (!model) return null;
-      return this.mapper.common.toEntity(model);
+      return this.mapper.toEntity(model);
     } catch (error) {
-      this.mapError(error, "service.user.readUser");
+      this.defaultMapError(error, "service.user.readUser");
       throw error;
     }
   }
 
   async registerUser(data: unknown) {
     try {
-      const entity = this.factory.registerUser.create(data);
+      const entity = this.factory.create(data);
       const model = await this.repository.createUser(entity);
-      return this.mapper.common.toEntity(model);
+      return this.mapper.toEntity(model);
     } catch (error) {
-      this.mapError(error, "service.user.registerUser");
+      this.defaultMapError(error, "service.user.registerUser");
       throw error;
-    }
-  }
-
-  mapError(error: unknown, source: string) {
-    switch (true) {
-      case error instanceof CreateUserFactoryError:
-        throw new ApplicationError(error.message, {
-          originalError: error,
-          source,
-        });
-
-      case error instanceof DatabaseError:
-        throw new ApplicationError(error.message, {
-          originalError: error,
-          source,
-        });
-
-      case error instanceof NetworkError:
-        throw error;
-
-      case error instanceof ApplicationError:
-        throw error;
-
-      default:
-        throw new ApplicationError("An unknown error occurred", {
-          originalError: error,
-          source,
-        });
     }
   }
 }
