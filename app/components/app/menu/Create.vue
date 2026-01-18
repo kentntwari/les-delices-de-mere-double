@@ -1,19 +1,12 @@
 <script lang="ts" setup>
-  import type { GenericObject } from "vee-validate";
-
-  import { useDebounceFn, type TCreateItemSchema } from "#imports";
-  import { toast } from "vue-sonner";
-
   import { READ_ONLY_USER_STATUS } from "~/app.keys";
-  import { MenuItemEntity } from "~~/mvc/entities/item";
+  import { nextTick } from "vue";
 
   const emit = defineEmits<{
-    (e: "created", v: TCreateItemSchema): void;
-  }>();
-
-  const props = defineProps<{
-    onSuccess?: () => void;
-    onError?: () => void;
+    (e: "create", v: TCreateItemSchema): void;
+    (e: "commit", v: TCreateItemSchema): void;
+    (e: "error"): void;
+    (e: "success"): void;
   }>();
 
   const userStatus = useState<IUserMeta["status"]>(READ_ONLY_USER_STATUS);
@@ -21,25 +14,6 @@
   const validationSchema = toTypedSchema(createItemSchema);
 
   const isOpen = ref(false);
-
-  const debouncedSubmit = useDebounceFn((v: GenericObject) => {
-    return $fetch("/api/item", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: v,
-      onRequestError() {
-        props.onError?.();
-      },
-      onResponse() {
-        props.onSuccess?.();
-      },
-      onResponseError() {
-        props.onError?.();
-      },
-    });
-  }, 500);
 </script>
 <template>
   <UIPopover v-model:open="isOpen">
@@ -63,23 +37,23 @@
         as="div"
       >
         <form
-          @submit="
-            handleSubmit($event, async (v) => {
-              validate();
-              emit('created', {
+          @submit.prevent="
+            handleSubmit(async (v) => {
+              // Emit create first so parent can apply optimistic update,
+              // then wait a tick before emitting commit so parent state updates
+              console.log('Create.vue: submit values', v);
+              emit('create', {
                 id: v.id,
                 title: v.title,
                 unitPrice: parseFloat(v.unitPrice),
               } satisfies TCreateItemSchema);
               isOpen = false;
-              toast.promise(
-                debouncedSubmit({ ...v, id: MenuItemEntity.generateID() }),
-                {
-                  loading: 'Loading...',
-                  success: 'Item created successfully!',
-                  error: 'An error occurred while creating the item.',
-                }
-              );
+              await nextTick();
+              emit('commit', {
+                id: v.id,
+                title: v.title,
+                unitPrice: parseFloat(v.unitPrice),
+              } satisfies TCreateItemSchema);
             })
           "
           class="contents"
