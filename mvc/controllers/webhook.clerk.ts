@@ -3,16 +3,16 @@ import { BadRequestResponse, BaseController, JsonResponse } from "./base";
 
 import { NetworkError } from "../errors.appwide";
 import { UserService } from "../service/user";
+import { UserMapper } from "../mapper/user";
 
-import { MapperStrategy } from "../mapper/strategy";
-
-const s = {
-  user: UserService,
-} as const;
 export class WebhookClerkController extends BaseController {
   private _webhookEvent: WebhookEvent | null = null;
 
-  constructor(req: Request) {
+  constructor(
+    req: Request,
+    private service: UserService = new UserService(),
+    private mapper: UserMapper= new UserMapper()
+  ) {
     super(req);
   }
 
@@ -57,13 +57,13 @@ export class WebhookClerkController extends BaseController {
 
       switch (true) {
         case event.type === "user.created":
-          const b = await new UserService().registerUser(
-            MapperStrategy.registerUser.fromClerkWebhookEvent(event)
+          // TODO: Should write to clerk metadata for faster processing in policy middleware
+          const b = await this.service.registerUser(
+            this.mapper.fromClerkWebhookEvent(event.data)
           );
 
           return new JsonResponse({
-            success: true,
-            data: MapperStrategy.registerUser.toDto(b),
+            data: this.mapper.toDto(b),
           });
 
         default:
