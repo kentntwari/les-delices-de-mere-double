@@ -1,20 +1,38 @@
 import type { User as UserModel } from "@prisma/client";
+import type { UserJSON } from "@clerk/nuxt/server";
+import type {
+  TUserSchema as TUserDTO,
+  TCreateUserSchema as TCreateUserDTO,
+} from "../../shared/utils/schemas.zod";
+
 import { BaseMapper } from "./base";
 import { UserEntity } from "../entities/user";
-import { TCreateUserSchema } from "../../shared/utils/schemas.zod";
-import { UserWebhookEvent } from "@clerk/backend/webhooks";
 
-export class UserMapper extends BaseMapper<UserEntity, UserModel> {
+export class UserMapper extends BaseMapper<UserEntity, TUserDTO, UserModel> {
   toEntity(data: UserModel): UserEntity {
     const [firstName, ...lastNameParts] = data.name.split(" ");
-    return new UserEntity(
+    const e = new UserEntity(
       data.id,
       firstName || "",
       lastNameParts.join(" ") || "",
       data.email,
-      data.role,
-      data.permissions
+      data.role
     );
+
+    e.permissions = data.permissions;
+    e.status = data.status;
+
+    return e;
+  }
+
+  toDto(entity: UserEntity) {
+    return {
+      id: entity.id,
+      firstName: entity.firstName,
+      lastName: entity.lastName,
+      email: entity.email,
+      role: entity.role,
+    };
   }
 
   toSafeModel(entity: UserEntity) {
@@ -23,38 +41,16 @@ export class UserMapper extends BaseMapper<UserEntity, UserModel> {
       name: entity.fullName,
       email: entity.email,
       role: entity.role,
-    } satisfies Partial<UserModel>;
-  }
-}
-
-type TCreateUserDTO = TCreateUserSchema;
-export class CreateUserMapper extends UserMapper {
-  fromClerkWebhookEvent(event: UserWebhookEvent): TCreateUserDTO {
-    return {
-      id: event.data.id,
-      firstName:
-        event.type === "user.deleted"
-          ? "UNSPECIFED_FIRST_NAME"
-          : event.data.first_name ?? "UNSPECIFED_FIRST_NAME",
-      lastName:
-        event.type === "user.deleted"
-          ? "UNSPECIFED_LAST_NAME"
-          : event.data.last_name ?? "UNSPECIFED_LAST_NAME",
-      email:
-        event.type === "user.deleted"
-          ? "UNSPECIFED_EMAIL@DOMAIN.COM"
-          : event.data.email_addresses[0]?.email_address ??
-            "UNSPECIFED_EMAIL@DOMAIN.COM",
-      permissions: [],
     };
   }
-  toDto(entity: UserEntity): TCreateUserDTO {
+
+  fromClerkWebhookEvent(user: UserJSON): TUserDTO {
     return {
-      id: entity.id,
-      firstName: entity.firstName,
-      lastName: entity.lastName,
-      email: entity.email,
-      permissions: entity.grantBasicUserAccess(),
-    } satisfies TCreateUserSchema;
+      id: user.id,
+      firstName: user.first_name ?? "UNSPECIFED_FIRST_NAME",
+      lastName: user.last_name ?? "UNSPECIFED_LAST_NAME",
+      email:
+        user.email_addresses[0]?.email_address ?? "UNSPECIFED_EMAIL@DOMAIN.COM",
+    };
   }
 }

@@ -1,21 +1,23 @@
 import type { User as UserModel, $Enums } from "@prisma/client";
 
 export class UserEntity implements Pick<UserModel, "id" | "email" | "role"> {
-  protected _fullName: string;
-  protected _status: UserModel["status"] = "PENDING";
+  private _fullName: string;
+  private _status: UserModel["status"] = "PENDING";
+  private _permissions: UserModel["permissions"] = [];
 
   constructor(
     public readonly id: string,
     public firstName: string,
     public lastName: string,
     public email: string,
-    public role: UserModel["role"],
-    protected permissions: UserModel["permissions"] = []
+    public role: UserModel["role"]
   ) {
     this._fullName = `${firstName} ${lastName}`;
+    this._permissions = UserEntity._defaultPermissions;
   }
 
   private static _defaultPermissions: UserModel["permissions"] = [
+    "READ_MENU",
     "READ_ORDERS",
     "READ_CUSTOMERS",
   ];
@@ -41,6 +43,18 @@ export class UserEntity implements Pick<UserModel, "id" | "email" | "role"> {
     return this._status;
   }
 
+  public set status(newStatus: $Enums.WhitelistStatus) {
+    this._status = newStatus;
+  }
+
+  public get permissions() {
+    return this._permissions;
+  }
+
+  public set permissions(newPermissions: UserModel["permissions"]) {
+    this._permissions = newPermissions;
+  }
+
   set fullName(newFullName: string) {
     this._fullName = newFullName;
     const [firstName, ...lastNameParts] = newFullName.split(" ");
@@ -50,40 +64,40 @@ export class UserEntity implements Pick<UserModel, "id" | "email" | "role"> {
 
   blockUser(): void {
     this._status = "REJECTED";
-    this.permissions = [];
+    this._permissions = [];
   }
 
   grantBasicUserAccess() {
     this._status = "APPROVED";
-    this.permissions = UserEntity._defaultPermissions;
-    return this.permissions;
+    this._permissions = UserEntity._defaultPermissions;
+    return this._permissions;
   }
 
   grantFullCustomerAccess() {
     if (this.role === "USER")
-      this.permissions.push("DELETE_CUSTOMERS", "UPDATE_CUSTOMERS");
-    this.permissions = Array.from(new Set(this.permissions));
-    return this.permissions;
+      this._permissions.push("DELETE_CUSTOMERS", "UPDATE_CUSTOMERS");
+    this._permissions = Array.from(new Set(this._permissions));
+    return this._permissions;
   }
 
   grantFullOrderAccess() {
-    this.permissions.push("DELETE_ORDERS", "UPDATE_ORDERS");
-    this.permissions = Array.from(new Set(this.permissions));
-    return this.permissions;
+    this._permissions.push("DELETE_ORDERS", "UPDATE_ORDERS");
+    this._permissions = Array.from(new Set(this._permissions));
+    return this._permissions;
   }
 
   grantFullMenuAccess() {
     if (this.role !== "USER")
-      this.permissions.push("READ_MENU", "UPDATE_MENU", "DELETE_MENU");
-    this.permissions = Array.from(new Set(this.permissions));
-    return this.permissions;
+      this._permissions.push("READ_MENU", "UPDATE_MENU", "DELETE_MENU");
+    this._permissions = Array.from(new Set(this._permissions));
+    return this._permissions;
   }
 
   grantFullUserAccess() {
     if (this.role === "ADMIN")
-      this.permissions.push("READ_USERS", "UPDATE_USERS", "DELETE_USERS");
-    this.permissions = Array.from(new Set(this.permissions));
-    return this.permissions;
+      this._permissions.push("READ_USERS", "UPDATE_USERS", "DELETE_USERS");
+    this._permissions = Array.from(new Set(this._permissions));
+    return this._permissions;
   }
 
   assignRole(role: UserEntity["role"]): void {
@@ -91,15 +105,15 @@ export class UserEntity implements Pick<UserModel, "id" | "email" | "role"> {
 
     switch (true) {
       case role === "SUPERUSER":
-        this.permissions = UserEntity._superUserPermissions;
+        this._permissions = UserEntity._superUserPermissions;
         break;
 
       case role === "ADMIN":
-        this.permissions = UserEntity._adminPermissions;
+        this._permissions = UserEntity._adminPermissions;
         break;
 
       default:
-        this.permissions = UserEntity._defaultPermissions;
+        this._permissions = UserEntity._defaultPermissions;
         break;
     }
   }

@@ -1,51 +1,44 @@
 import { BaseFactory } from "./base";
 import {
+  userSchema,
   createUserSchema,
-  type TCreateUserSchema,
+  type TUserSchema as TUserDTO,
 } from "../../shared/utils/schemas.zod";
 import { UserEntity } from "../entities/user";
+import { ApplicationError } from "../errors.appwide";
 
-export class CreateUserFactory extends BaseFactory<
-  TCreateUserSchema,
-  UserEntity
-> {
-  protected build(data: TCreateUserSchema): UserEntity {
+export class UserFactory extends BaseFactory<TUserDTO, UserEntity> {
+  protected build(data: Partial<TUserDTO>): UserEntity {
     return new UserEntity(
       data.id ?? crypto.randomUUID(),
-      data.firstName,
-      data.lastName,
-      data.email,
+      data.firstName || "",
+      data.lastName || "",
+      data.email || "",
       "USER"
     );
   }
 
-  public validate(data: unknown): TCreateUserSchema {
+  public validate(data: unknown): TUserDTO {
     try {
-      const parsedData = createUserSchema.safeParse(data);
+      const parsedData = userSchema.safeParse(data);
       if (parsedData.success) return parsedData.data;
 
-      throw new CreateUserFactoryError("Validation failed", {
-        issues: parsedData.error.issues,
-        input: data,
-        source: "mvc.factories.user.CreateUserFactory.validate",
+      throw new ApplicationError("Validation failed", {
+        issues: JSON.stringify(parsedData.error.issues),
+        input: JSON.stringify(data),
+        source: "mvc.factories.user.UserFactory.validate",
       });
     } catch (error) {
-      if (error instanceof CreateUserFactoryError) throw error;
+      if (error instanceof ApplicationError) throw error;
       else
-        throw new CreateUserFactoryError("Failed to create user entity", {
-          originalError: error,
-          input: data,
-          source: "mvc.factories.user.CreateUserFactory.validate",
-        });
+        throw new ApplicationError(
+          "Unknown error occured during validation of user",
+          {
+            originalError: JSON.stringify(error),
+            input: JSON.stringify(data),
+            source: "mvc.factories.user.UserFactory.validate",
+          }
+        );
     }
-  }
-}
-
-export class CreateUserFactoryError extends Error {
-  constructor(message: string, context: Record<string, unknown> = {}) {
-    super(message);
-    this.name = "CREATE USER FACTORY ERROR";
-    // TODO: Must implement pino for logging
-    console.error(`[CreateUserFactoryError]: ${this.message}`, context);
   }
 }
