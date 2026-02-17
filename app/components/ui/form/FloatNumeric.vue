@@ -1,8 +1,12 @@
 <script setup lang="ts">
-  defineProps<{
+  import { on } from "events";
+
+  const props = defineProps<{
     label: string;
+    id: string;
     title?: string;
     placeholder?: string;
+    defaultValue?: string;
   }>();
 
   defineOptions({
@@ -19,7 +23,7 @@
     select: () => inputRef.value?.select(),
   });
 
-  const inputValue = ref("");
+  const inputValue = ref(props.defaultValue || "");
 
   const isValidCharacter = (char: string) => {
     // Only allow digits and decimal point
@@ -90,23 +94,23 @@
 <template>
   <div>
     <label
-      for="numeric"
+      :for="id"
       :title="title || label"
-      class="block text-neutral-grey-1100 mb-[5px]"
+      class="block text-sm text-neutral-grey-1100 mb-[5px]"
     >
       {{ label }}
     </label>
     <input
-      id="numeric"
       ref="inputRef"
       v-bind="{ ...$attrs }"
       v-model="inputValue"
       type="text"
       inputmode="decimal"
+      :id="id"
       :placeholder="placeholder || '0.00'"
       :class="
         cn(
-          'bg-white w-full h-10 text-neutral-grey-1300 outline outline-neutral-grey-500 focus:neutral-grey-900 focus:ring-2 focus:ring-neutral-grey-900 rounded-lg pl-3 pr-2',
+          'bg-white w-full h-10 text-neutral-grey-1300 outline outline-neutral-grey-500 focus:neutral-grey-900 focus:ring-2 focus:ring-neutral-grey-900 rounded-lg pl-3 pr-2 text-sm',
           $attrs.class || '',
         )
       "
