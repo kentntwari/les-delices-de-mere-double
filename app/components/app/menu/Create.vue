@@ -39,8 +39,19 @@
         <form
           @submit.prevent="
             handleSubmit(async (v) => {
-              // Emit create first so parent can apply optimistic update,
-              // then wait a tick before emitting commit so parent state updates
+              // Two-phase optimistic update pattern:
+              //
+              // 1. Emit 'create' immediately so parent can apply optimistic UI update
+              // 2. Close the popover (isOpen = false)
+              // 3. Wait for Vue's DOM update cycle (nextTick)
+              // 4. Emit 'commit' so parent can persist to server
+              //
+              // Why code after `isOpen = false` still executes:
+              // - Setting a ref only schedules a DOM update; it doesn't exit the function
+              // - Vue batches reactive updates and processes them asynchronously
+              // - Only UIPopoverContent unmounts when isOpen becomes false
+              // - This component (Create.vue) stays mounted, so emit() remains valid
+              // - nextTick() ensures the popover is visually closed before commit fires
               console.log('Create.vue: submit values', v);
               emit('create', {
                 id: v.id,
@@ -74,6 +85,7 @@
           >
             <UIFloatNumeric
               v-bind="field"
+              id="item-unit-price"
               label="Unit price"
               title="Price for one item"
               placeholder="15 or 15.00"
