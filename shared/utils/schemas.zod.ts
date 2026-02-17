@@ -51,11 +51,9 @@ export const createItemSchema = menuSchema.shape.items.element
   });
 
 export type TUpdateItemSchema = z.infer<typeof updateItemSchema>;
-export const updateItemSchema = createItemSchema
-  .omit({ id: true })
-  .extend({
-    id: z.string().min(1, "ID is required for updating an item"),
-  })
+export const updateItemSchema = createItemSchema.omit({ id: true }).extend({
+  id: z.string().min(1, "ID is required for updating an item"),
+});
 
 export type TUpdateItemIntents = z.infer<typeof updateItemIntentsSchema>;
 export const updateItemIntentsSchema = z.enum([
@@ -76,31 +74,57 @@ export const orderSchema = z.object({
   ),
   total: z.string(),
 });
+const digitsOnly = (val: string) => val.replace(/\D/g, "");
+export const phoneNumberSchema = z.object({
+  countryCode: z
+    .string({ required_error: "Country code is required" })
+    .min(1, "Country code is required")
+    .transform(digitsOnly)
+    .pipe(z.string().regex(/^[1-9]\d{0,2}$/, "Invalid country code"))
+    .default("1"),
 
+  number: z
+    .string({ required_error: "Phone number is required" })
+    .min(1, "Phone number is required")
+    .transform(digitsOnly)
+    .pipe(z.string().regex(/^\d{7,15}$/, "Phone number must be 7-15 digits")),
+});
 export type TCreateOrderFormSchema = z.infer<typeof createOrderFormSchema>;
 export const createOrderFormSchema = z.object({
   cx: z.object({
+    id: z.string().nullable(),
     fullName: z.string().min(1, "Full name is required"),
-    email: z.string().email("Invalid email address"),
-    phone: z.string().min(10, "Phone number must be at least 10 digits"),
+    email: z.string().email("Invalid email address").optional(),
+    phone: phoneNumberSchema,
     isSameAsWhatsapp: z.boolean().default(true),
-    whatsappNumber: z
-      .object({
-        countryCode: z.string().min(1, "Country code is required"),
-        number: z.string().min(7, "WhatsApp number must be at least 7 digits"),
-      })
-      .optional(),
+    whatsappNumber: phoneNumberSchema.optional(),
   }),
   delivery: z.object({
     isRequired: z.boolean().default(false),
-    minimumFee: z.number().min(10).default(10).optional(),
+    minimumFee: z
+      .number()
+      .min(10, "Minimum fee must be at least 10")
+      .nullable()
+      .default(null),
     address: z
       .object({
         isHomeAddress: z.boolean().default(true),
         street: z.string().min(1, "Street is required"),
         city: z.string().min(1, "City is required"),
         province: z.string().min(1, "Province is required"),
-        postalCode: z.string().min(1, "Postal code is required"),
+        postalCode: z
+          .string()
+          .min(1, "Postal code is required")
+          .transform((val) => val.toUpperCase().replace(/\s/g, ""))
+          .pipe(
+            z
+              .string()
+              .regex(
+                /^[A-Z]\d[A-Z]\d[A-Z]\d$/,
+                "Postal code is not valid. Format should be A1A1A1",
+              ),
+          )
+          .transform((val) => `${val.slice(0, 3)} ${val.slice(3)}`),
         country: z.literal("Canada"),
       })
       .nullish(),
@@ -109,10 +133,28 @@ export const createOrderFormSchema = z.object({
     .array(
       z.object({
         id: z.string(),
-        title: z.string().min(1, "Title is required"),
+        title: z.string().min(1, "Item title is required"),
         quantity: z.number().min(1, "Quantity must be at least 1"),
         unitPrice: z.number().min(1, "Price must be at least 1"),
       }),
     )
-    .length(1, "At least one item is required"),
+    .min(1, "At least one item is required"),
+});
+
+export type TCustomerSchema = z.infer<typeof customerSchema>;
+export const customerSchema = z.object({
+  id: z.string().min(1),
+  fullName: z.string().min(1).max(200),
+  email: z.string().email().optional(),
+  phone: phoneNumberSchema,
+  whatsappNumber: phoneNumberSchema.optional(),
+  address: z
+    .object({
+      street: z.string().min(1).max(200),
+      city: z.string().min(1).max(100),
+      province: z.string().min(1).max(100),
+      postalCode: z.string().min(1).max(20),
+      country: z.literal("Canada"),
+    })
+    .optional(),
 });
