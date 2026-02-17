@@ -19,13 +19,13 @@ function checkPermission(policy: BasePolicy, method: string): void {
   if (hasPermission === false) {
     log.warn(
       { policy: policy.constructor.name, method },
-      "[UNAUTHORIZED ACCESS]: Permissions check failed"
+      "[UNAUTHORIZED ACCESS]: Permissions check failed",
     );
     throw createError({ statusCode: 401, statusMessage: "Unauthorized" });
   }
   log.success(
     { policy: policy.constructor.name, method },
-    "[AUTHORIZED ACCESS]: Permissions check passed"
+    "[AUTHORIZED ACCESS]: Permissions check passed",
   );
 }
 
@@ -36,7 +36,7 @@ export default clerkMiddleware(async (event) => {
       params: { userId: event.context.auth().userId },
       method: event.method,
     },
-    "Policy middleware invoked"
+    "Policy middleware invoked",
   );
 
   const { userId } = event.context.auth();
@@ -47,17 +47,19 @@ export default clerkMiddleware(async (event) => {
   // These are used for initial auth and don't need policy enforcement
   if (event.path.startsWith("/api/user/")) return;
 
-  const isApiItemsPath = event.path.startsWith("/api/items");
-  const isApiOrdersPath = event.path.startsWith("/api/orders");
+  const isApiItemPath =
+    event.path.startsWith("/api/items") || event.path.startsWith("/api/item");
+  const isApiOrderPath =
+    event.path.startsWith("/api/orders") || event.path.startsWith("/api/order");
 
   // Only run policy checks for protected API routes
-  if (!isApiItemsPath && !isApiOrdersPath) return;
+  if (!isApiItemPath && !isApiOrderPath) return;
 
   const userService = new UserService();
   const user = await userService.readUser(userId).catch((e) => {
     log.error(
       { err: e, path: event.path, params: { userId } },
-      "[ERROR FETCHING USER]: Failed to fetch user from service"
+      "[ERROR FETCHING USER]: Failed to fetch user from service",
     );
     throw createError({
       statusCode: 502,
@@ -68,7 +70,7 @@ export default clerkMiddleware(async (event) => {
   if (!user) {
     log.error(
       { path: event.path, params: { userId } },
-      "[USER NOT FOUND]: No user found for policy enforcement"
+      "[USER NOT FOUND]: No user found for policy enforcement",
     );
     throw createError({
       statusCode: 404,
@@ -77,12 +79,12 @@ export default clerkMiddleware(async (event) => {
   }
 
   switch (true) {
-    case isApiItemsPath:
+    case isApiItemPath:
       const mp = new MenuPolicy(user);
       checkPermission(mp, event.method);
       break;
 
-    case isApiOrdersPath:
+    case isApiOrderPath:
       const op = new OrderPolicy(user);
       checkPermission(op, event.method);
       break;
