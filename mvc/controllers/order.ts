@@ -3,6 +3,7 @@ import {
   BaseController,
   JsonResponse,
   ForbiddenResponse,
+  SilentSuccessResponse,
 } from "./base";
 
 import { OrderService } from "../service/order";
@@ -12,7 +13,7 @@ export class OrderController extends BaseController {
   constructor(
     req: Request,
     private service: OrderService = new OrderService(),
-    private mapper: OrderMapper = new OrderMapper()
+    private mapper: OrderMapper = new OrderMapper(),
   ) {
     super(req);
   }
@@ -37,8 +38,18 @@ export class OrderController extends BaseController {
     return new BadRequestResponse("Not implemented yet");
   }
 
-  async create(args: any) {
-    return new BadRequestResponse("Not implemented yet");
+  async create() {
+    try {
+      await this.service.createOrder(await this.getBody());
+      return new SilentSuccessResponse();
+    } catch (error) {
+      this.logError(error, {
+        origin: "controllers.order.create",
+      });
+      return this.mapErrorResponse(error, {
+        origin: "controllers.order.create",
+      });
+    }
   }
 
   async update(args: any) {
