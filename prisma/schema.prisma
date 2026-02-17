@@ -28,17 +28,18 @@ model User {
 }
 
 model Customer {
-  id         String   @id @default(cuid())
-  name       String
-  email      String   @unique
-  phone      String?
-  street     String?  @map("address_street")
-  city       String?  @map("address_city")
-  state      String?  @map("address_state")
-  postalCode String?  @map("address_postal_code")
-  orders     Order[]
-  createdAt  DateTime @default(now()) @map("created_at")
-  updatedAt  DateTime @updatedAt @map("updated_at")
+  id                  String   @id @default(cuid())
+  name                String
+  email               String?  @unique
+  phone               String
+  whatsappPhoneNumber String?  @map("whatsapp_phone_number")
+  street              String?  @map("address_street")
+  city                String?  @map("address_city")
+  state               String?  @map("address_state")
+  postalCode          String?  @map("address_postal_code")
+  orders              Order[]
+  createdAt           DateTime @default(now()) @map("created_at")
+  updatedAt           DateTime @updatedAt @map("updated_at")
 
   @@index([id, email, phone], name: "customer_id_email_phone_idx")
   @@map("customers")
@@ -49,8 +50,8 @@ model Order {
   items         OrderedItem[]
   status        OrderStatus   @default(NOT_STARTED) @map("status")
   paymentStatus PaymentStatus @default(UNPAID) @map("payment_status")
-  deliveryFee   Float         @default(0.0) @map("delivery_fee")
-  customer      Customer?     @relation(fields: [customerId], references: [id])
+  deliveryFee   Float?        @default(10.0) @map("delivery_fee")
+  customer      Customer?     @relation(fields: [customerId], references: [id], onDelete: Cascade, onUpdate: Cascade)
   customerId    String?       @map("customer_id")
   orderLogs     OrderLogs[]
   createdAt     DateTime      @default(now()) @map("created_at")
@@ -63,7 +64,7 @@ model Order {
 model OrderLogs {
   id        String   @id @default(cuid())
   message   String   @db.Text
-  order     Order    @relation(fields: [orderId], references: [id])
+  order     Order    @relation(fields: [orderId], references: [id], onDelete: Cascade, onUpdate: Cascade)
   orderId   String   @unique @map("order_id")
   createdAt DateTime @default(now()) @map("created_at")
 
@@ -73,10 +74,10 @@ model OrderLogs {
 
 model OrderedItem {
   id        String   @id @default(cuid())
-  item      MenuItem @relation(fields: [itemId], references: [id])
+  item      MenuItem @relation(fields: [itemId], references: [id], onDelete: Cascade, onUpdate: Cascade)
   itemId    String   @map("item_id")
   quantity  Int      @default(1)
-  order     Order?   @relation(fields: [orderId], references: [id])
+  order     Order?   @relation(fields: [orderId], references: [id], onDelete: SetNull, onUpdate: Cascade)
   orderId   String?
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
