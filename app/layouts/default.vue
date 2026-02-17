@@ -22,9 +22,10 @@
     // FIX: Must throw if api shape response is not what we expect
     if (isSignedIn.value) {
       const api = await $fetch<{ data: UserEntity["_status"] }>(
-        "/api/user/" + userId.value + "/status"
-      );
-      userStatus.value = api.data;
+        "/api/user/" + userId.value + "/status",
+      ).catch((e) => console.log(e));
+
+      userStatus.value = api?.data || "REJECTED";
 
       if (userStatus.value === "REJECTED") {
         showError({
@@ -45,7 +46,7 @@
 
   provide<TProvidedInteractionState>(INJECT_FIRST_INTERACTION, {
     isFirstInteraction: computed(
-      () => isFirstAppInteraction.value as "true" | "false"
+      () => isFirstAppInteraction.value as "true" | "false",
     ),
     markAppAsInteracted,
   });
