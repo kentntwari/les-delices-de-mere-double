@@ -38,6 +38,7 @@
   "devDependencies": {
     "@formkit/auto-animate": "^0.9.0",
     "@iconify-json/lucide": "^1.2.73",
+    "@nuxt/hints": "^1.0.0-alpha.6",
     "@nuxtjs/i18n": "^10.2.0",
     "@types/node": "^24.10.1",
     "@types/pg": "^8.15.6",
