@@ -15,46 +15,45 @@ export const isDev = process.env.NODE_ENV !== "production";
  */
 export function createRequestLogger(file: string) {
   const formatRequestMessage = (
-    level: string,
     method: string,
     msg: string,
-    color: string
+    color: string,
   ): string => {
     if (isDev) {
-      return `${color}[${method} REQUEST RECEIVED]:[${level}]${colors.reset}: ${msg}`;
+      return `${color}[${method} REQUEST RECEIVED]:${colors.reset}: ${msg}`;
     }
-    return `[${method} REQUEST RECEIVED]:[${level}]: ${msg}`;
+    return `[${method} REQUEST RECEIVED]: ${msg}`;
   };
 
   return {
     info: (path: string, method: string, data: unknown, msg: string) => {
       logger.info(
         { file, path, method, data },
-        formatRequestMessage("INFO", method, msg, colors.blue)
+        formatRequestMessage(method, msg, colors.blue),
       );
     },
     error: (path: string, method: string, data: unknown, msg: string) => {
       logger.error(
         { file, path, method, data },
-        formatRequestMessage("ERROR", method, msg, colors.red)
+        formatRequestMessage(method, msg, colors.red),
       );
     },
     warn: (path: string, method: string, data: unknown, msg: string) => {
       logger.warn(
         { file, path, method, data },
-        formatRequestMessage("WARN", method, msg, colors.yellow)
+        formatRequestMessage(method, msg, colors.yellow),
       );
     },
     debug: (path: string, method: string, data: unknown, msg: string) => {
       logger.debug(
         { file, path, method, data },
-        formatRequestMessage("DEBUG", method, msg, colors.gray)
+        formatRequestMessage(method, msg, colors.gray),
       );
     },
     success: (path: string, method: string, data: unknown, msg: string) => {
       logger.info(
         { file, path, method, data },
-        formatRequestMessage("SUCCESS", method, msg, colors.green)
+        formatRequestMessage(method, msg, colors.green),
       );
     },
   };
@@ -163,24 +162,24 @@ const colors = {
  * @example
  * const log = createLogger("mvc.controllers.user");
  *
- * // Error (red): [USER CONTROLLER]:[ERROR]: User not found, {source: mvc.controllers.user}
+ * // Error (red): [USER CONTROLLER]: User not found, {source: mvc.controllers.user}
  * log.error({ userId: "123" }, "User not found");
  *
- * // Info (blue): [USER CONTROLLER]:[INFO]: User fetched, {source: mvc.controllers.user}
+ * // Info (blue): [USER CONTROLLER]: User fetched, {source: mvc.controllers.user}
  * log.info({ userId: "123" }, "User fetched");
  *
- * // Success (green): [USER CONTROLLER]:[SUCCESS]: Order created, {source: mvc.controllers.user}
+ * // Success (green): [USER CONTROLLER]: Order created, {source: mvc.controllers.user}
  * log.success({ orderId: "456" }, "Order created");
  */
 export function createLogger(context: string) {
   const moduleName = formatModuleName(context);
   const childLogger = logger.child({ source: context });
 
-  const formatMessage = (level: string, msg: string, color: string): string => {
+  const formatMessage = (msg: string, color: string): string => {
     if (isDev) {
-      return `${color}[${moduleName}]:[${level}]${colors.reset}: ${msg} ${colors.gray}${colors.reset}`;
+      return `${color}[${moduleName}]: ${colors.reset}: ${msg} ${colors.gray}${colors.reset}`;
     }
-    return `[${moduleName}]:[${level}]: ${msg}`;
+    return `[${moduleName}]: ${msg}`;
   };
 
   return {
@@ -189,7 +188,7 @@ export function createLogger(context: string) {
      * @example log.error({ err: error, userId }, "Failed to fetch user");
      */
     error: (obj: object, msg: string) => {
-      childLogger.error(obj, formatMessage("ERROR", msg, colors.red));
+      childLogger.error(obj, formatMessage(msg, colors.red));
     },
 
     /**
@@ -197,7 +196,7 @@ export function createLogger(context: string) {
      * @example log.warn({ attempt: 3 }, "Retry limit approaching");
      */
     warn: (obj: object, msg: string) => {
-      childLogger.warn(obj, formatMessage("WARN", msg, colors.yellow));
+      childLogger.warn(obj, formatMessage(msg, colors.yellow));
     },
 
     /**
@@ -205,7 +204,7 @@ export function createLogger(context: string) {
      * @example log.info({ userId }, "Processing user request");
      */
     info: (obj: object, msg: string) => {
-      childLogger.info(obj, formatMessage("INFO", msg, colors.blue));
+      childLogger.info(obj, formatMessage(msg, colors.blue));
     },
 
     /**
@@ -213,7 +212,7 @@ export function createLogger(context: string) {
      * @example log.success({ orderId }, "Order created successfully");
      */
     success: (obj: object, msg: string) => {
-      childLogger.info(obj, formatMessage("SUCCESS", msg, colors.green));
+      childLogger.info(obj, formatMessage(msg, colors.green));
     },
 
     /**
@@ -221,7 +220,7 @@ export function createLogger(context: string) {
      * @example log.debug({ payload }, "Request payload received");
      */
     debug: (obj: object, msg: string) => {
-      childLogger.debug(obj, formatMessage("DEBUG", msg, colors.gray));
+      childLogger.debug(obj, formatMessage(msg, colors.gray));
     },
 
     /**
@@ -229,7 +228,7 @@ export function createLogger(context: string) {
      * @example log.trace({ stack }, "Entering function");
      */
     trace: (obj: object, msg: string) => {
-      childLogger.trace(obj, formatMessage("TRACE", msg, colors.gray));
+      childLogger.trace(obj, formatMessage(msg, colors.gray));
     },
 
     /**
@@ -237,7 +236,7 @@ export function createLogger(context: string) {
      * @example log.fatal({ err }, "Database connection lost");
      */
     fatal: (obj: object, msg: string) => {
-      childLogger.fatal(obj, formatMessage("FATAL", msg, colors.red));
+      childLogger.fatal(obj, formatMessage(msg, colors.red));
     },
   };
 }

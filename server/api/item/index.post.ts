@@ -1,7 +1,7 @@
 import { createRequestLogger } from "~~/server/utils/logger";
 import { MenuController } from "../../../mvc/controllers/menu";
 
-const log = createRequestLogger("/api/item/index.post.ts");
+const log = createRequestLogger("server.api.item.index.post.ts");
 
 export default defineEventHandler(async (event) => {
   try {
@@ -9,11 +9,11 @@ export default defineEventHandler(async (event) => {
       event.path,
       event.method,
       await readBody(event),
-      "POST REQUEST RECEIVED: Creating new menu item"
+      "POST REQUEST RECEIVED: Creating new menu item",
     );
     const r = await new MenuController(toWebRequest(event)).create();
-    return treatResponses(event, r, "/api/item/index.post.ts");
+    return treatResponses(event, r);
   } catch (error) {
-    treatErrors(error, "/api/item/index.post.ts");
+    treatErrors(error);
   }
 });

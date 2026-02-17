@@ -2,7 +2,7 @@ import { createRequestLogger } from "~~/server/utils/logger";
 import { MenuController } from "../../../mvc/controllers/menu";
 import { IMenuItemsCustomRequestHeaders } from "~~/shared/types";
 
-const log = createRequestLogger("/api/item/index.put.ts");
+const log = createRequestLogger("server.api.item.index.put.ts");
 
 export default defineEventHandler(async (event) => {
   try {
@@ -29,12 +29,12 @@ export default defineEventHandler(async (event) => {
 
     if (HasUpdateTitleHeader) {
       const r = await new MenuController(toWebRequest(event)).update("title");
-      return treatResponses(event, r, "/api/item/index.put.ts");
+      return treatResponses(event, r);
     }
 
     if (HasUpdatePricingHeader) {
       const r = await new MenuController(toWebRequest(event)).update("price");
-      return treatResponses(event, r, "/api/item/index.put.ts");
+      return treatResponses(event, r);
     }
 
     throw createError({
@@ -42,6 +42,6 @@ export default defineEventHandler(async (event) => {
       statusMessage: "No valid update headers provided",
     });
   } catch (error) {
-    treatErrors(error, "/api/item/index.put.ts");
+    treatErrors(error);
   }
 });

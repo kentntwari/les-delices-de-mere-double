@@ -3,7 +3,7 @@ import { UserController } from "../../../../mvc/controllers/user";
 import { treatErrors, treatResponses } from "~~/server/utils/responses";
 import { errorMap } from "~~/shared/utils/errorMap";
 
-const logger = createRequestLogger("/api/user/[userId]/status.get.ts");
+const logger = createRequestLogger("server.api.user.[userId].status.get.ts");
 
 export default defineEventHandler(async (event) => {
   try {
@@ -14,7 +14,7 @@ export default defineEventHandler(async (event) => {
         event.path,
         event.method,
         { params: { userId } },
-        "[BAD REQUEST]: User ID is required"
+        "[BAD REQUEST]: User ID is required",
       );
 
       throw createError({
@@ -27,7 +27,7 @@ export default defineEventHandler(async (event) => {
       event.path,
       event.method,
       { params: { userId } },
-      "[STATUS REQUEST]: Fetching user status"
+      "[STATUS REQUEST]: Fetching user status",
     );
 
     const r = await new UserController(toWebRequest(event)).read({
@@ -35,8 +35,8 @@ export default defineEventHandler(async (event) => {
       intent: "GET_STATUS",
     });
 
-    return treatResponses(event, r, "/api/user/[userId]/status.get.ts");
+    return treatResponses(event, r);
   } catch (error) {
-    treatErrors(error, "/api/user/[userId]/status.get.ts");
+    treatErrors(error);
   }
 });
