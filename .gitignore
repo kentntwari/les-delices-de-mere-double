@@ -23,4 +23,10 @@ logs
 .env.*
 !.env.example
 
-/generated/prisma
+/@prisma/@prisma/client
+
+# Snyk Security Extension - AI Rules (auto-generated)
+.github\instructions\snyk_rules.instructions.md
+
+# Snyk Security Extension - AI Rules (auto-generated)
+.github/instructions/snyk_rules.instructions.md
