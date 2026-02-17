@@ -1,7 +1,7 @@
 import { createRequestLogger } from "~~/server/utils/logger";
 import { OrderController } from "../../../mvc/controllers/order";
 
-const log = createRequestLogger("/api/orders/index.ts");
+const log = createRequestLogger("server.api.orders.index.get.ts");
 
 export default defineEventHandler(async (event) => {
   try {
@@ -9,11 +9,11 @@ export default defineEventHandler(async (event) => {
       event.path,
       event.method,
       null,
-      "GET REQUEST RECEIVED: Listing orders"
+      "GET REQUEST RECEIVED: Listing orders",
     );
     const r = await new OrderController(toWebRequest(event)).list();
-    return treatResponses(event, r, "/api/orders/index.ts");
+    return treatResponses(event, r);
   } catch (error) {
-    treatErrors(error, "/api/orders/index.ts");
+    treatErrors(error);
   }
 });
