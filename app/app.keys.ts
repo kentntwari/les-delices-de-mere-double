@@ -5,6 +5,7 @@ export const INJECT_FIRST_INTERACTION = Symbol("INJECT_FIRST_INTERACTION");
 /* CLIENT FETCH KEYS */
 export const GET_ORDERS_KEY = "__GET__ORDERS__";
 export const GET_MENU_ITEMS_KEY = "__GET__MENU__ITEMS__";
+export const GET_CUSTOMERS_KEY = "__GET__CUSTOMERS__";
 
 /* ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- */
 
