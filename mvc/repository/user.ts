@@ -6,6 +6,11 @@ import { DatabaseError } from "../errors.db";
 
 import { db as defaultDbClient } from "../../server/utils/db";
 
+export const RepositoryFailuresMessages = {
+  getUser: "Failed to get user from database",
+  createUser: "Failed to create user in database",
+} as const;
+
 interface IUserRepository {
   getUser(id: string): Promise<UserModel | null>;
   createUser(entity: UserEntity): Promise<UserModel>;
@@ -21,7 +26,7 @@ export class UserRepository implements IUserRepository {
         where: { id },
       });
     } catch (error) {
-      throw new DatabaseError("Failed to get user from database", {
+      throw new DatabaseError(RepositoryFailuresMessages.getUser, {
         operation: "getUser",
         userId: id,
         error,
@@ -42,7 +47,7 @@ export class UserRepository implements IUserRepository {
         },
       });
     } catch (error) {
-      throw new DatabaseError("Failed to create user in database", {
+      throw new DatabaseError(RepositoryFailuresMessages.createUser, {
         operation: "createUser",
         error,
       });

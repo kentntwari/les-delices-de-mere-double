@@ -36,7 +36,7 @@ export class ItemFactory extends BaseFactory<TMenuItemDTO, MenuItemEntity> {
 
   public validate(data: unknown): TMenuItemDTO {
     try {
-      const parsedData = menuSchema.shape.items.element.safeParse(data);
+     const parsedData = menuSchema.shape.items.element.safeParse(data);
       if (parsedData.success) return parsedData.data;
       throw new ApplicationError("Validation failed", {
         issues: JSON.stringify(parsedData.error.issues),
@@ -56,7 +56,7 @@ export class ItemFactory extends BaseFactory<TMenuItemDTO, MenuItemEntity> {
         );
     }
   }
-
+ 
   static validateCreateItem(data: unknown): TCreatedItemDTO {
     const parsedData = createItemSchema.safeParse(data);
     if (parsedData.success) return parsedData.data;

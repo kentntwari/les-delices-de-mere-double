@@ -1,3 +1,7 @@
+import type {
+  TUpdateItemSchema,
+  TUpdateItemIntents,
+} from "../../shared/utils/schemas.zod";
 import { MenuItemEntity } from "../entities/item";
 import { ApplicationError } from "../errors.appwide";
 import { ItemFactory } from "../factories/item";
@@ -8,6 +12,13 @@ import { BaseService } from "./base";
 type TUpdateItemData = Partial<TUpdateItemSchema> & {
   intents: TUpdateItemIntents;
 };
+
+export const MenuServiceFailuresMessages = {
+  listItems: "Failed to list menu items",
+  addNewItem: "Failed to add new menu item",
+  updateItem: "Failed to update menu item",
+} as const;
+
 export class MenuService extends BaseService {
   constructor(
     private repository: ItemRepository = new ItemRepository(),
@@ -47,13 +58,21 @@ export class MenuService extends BaseService {
       const validated = ItemFactory.validateUpdateItem(data);
 
       if (intent === "UPDATE_TITLE" && !validated.title)
-        throw new ApplicationError("Title is required for title update", {
-          source: "service.menu.updateItem",
-        });
+        throw new ApplicationError(
+          MenuServiceFailuresMessages.updateItem +
+            ": Title is required for title update",
+          {
+            source: "service.menu.updateItem",
+          },
+        );
       else if (intent === "UPDATE_PRICING" && !validated.unitPrice)
-        throw new ApplicationError("Unit price is required for price update", {
-          source: "service.menu.updateItem",
-        });
+        throw new ApplicationError(
+          MenuServiceFailuresMessages.updateItem +
+            ": Unit price is required for price update",
+          {
+            source: "service.menu.updateItem",
+          },
+        );
 
       await this.repository.updateMenuItem(validated);
     } catch (error) {

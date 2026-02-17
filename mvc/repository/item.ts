@@ -7,16 +7,12 @@ export type MenuItemModel = Prisma.MenuItemGetPayload<{
   omit: { createdAt: true; updatedAt: true };
 }>;
 
-export type OrderedItemModel = Prisma.OrderedItemGetPayload<{
-  omit: { itemId: true; createdAt: true; updatedAt: true };
-}> &
-  Prisma.MenuItemGetPayload<{
-    select: {
-      title: true;
-      slug: true;
-      unitPrice: true;
-    };
-  }>;
+export const RepositoryFailuresMessages = {
+  getMenuItems: "Failed to get menu items from database",
+  getMenuItem: "Failed to get menu item from database",
+  createMenuItem: "Failed to create menu item in database",
+  updateMenuItem: "Failed to update menu item in database",
+} as const;
 
 interface IItemRepository {
   getMenuItems(): Promise<MenuItemModel[]>;
@@ -25,8 +21,6 @@ interface IItemRepository {
   updateMenuItem(
     data: Partial<Omit<MenuItemModel, "slug">>,
   ): Promise<MenuItemModel>;
-  getOrderItems(): Promise<OrderedItemModel[]>;
-  getOrderItem(id: string): Promise<OrderedItemModel | null>;
 }
 
 export class ItemRepository implements IItemRepository {
@@ -44,7 +38,7 @@ export class ItemRepository implements IItemRepository {
         },
       });
     } catch (error) {
-      throw new DatabaseError("Failed to get menu items from database", {
+      throw new DatabaseError(RepositoryFailuresMessages.getMenuItems, {
         operation: "getMenuItems",
         error,
       });
@@ -64,7 +58,7 @@ export class ItemRepository implements IItemRepository {
         },
       });
     } catch (error) {
-      throw new DatabaseError("Failed to get menu item from database", {
+      throw new DatabaseError(RepositoryFailuresMessages.getMenuItem, {
         operation: "getMenuItem",
         itemId: id,
         error,
@@ -84,7 +78,7 @@ export class ItemRepository implements IItemRepository {
         },
       });
     } catch (error) {
-      throw new DatabaseError("Failed to create menu item in database", {
+      throw new DatabaseError(RepositoryFailuresMessages.createMenuItem, {
         operation: "createMenuItem",
         error,
       });
@@ -94,13 +88,13 @@ export class ItemRepository implements IItemRepository {
   async updateMenuItem(data: Parameters<IItemRepository["updateMenuItem"]>[0]) {
     try {
       if (!data.id)
-        throw new DatabaseError("Item ID is required for update", {
+        throw new DatabaseError(RepositoryFailuresMessages.updateMenuItem, {
           operation: "updateMenuItem",
         });
 
       const currentItem = await this.getMenuItem(data.id);
       if (!currentItem)
-        throw new DatabaseError("Menu item not found for update", {
+        throw new DatabaseError(RepositoryFailuresMessages.updateMenuItem, {
           operation: "updateMenuItem",
           itemId: data.id,
         });
@@ -115,71 +109,9 @@ export class ItemRepository implements IItemRepository {
       });
     } catch (error) {
       if (error instanceof DatabaseError) throw error;
-      throw new DatabaseError("Failed to update menu item in database", {
+      throw new DatabaseError(RepositoryFailuresMessages.updateMenuItem, {
         operation: "updateMenuItem",
         data,
-        error,
-      });
-    }
-  }
-
-  async getOrderItems() {
-    try {
-      const b = await this.db.orderedItem.findMany({
-        omit: { itemId: true, createdAt: true, updatedAt: true },
-        include: {
-          item: {
-            select: {
-              title: true,
-              slug: true,
-              unitPrice: true,
-            },
-          },
-        },
-      });
-      return b.map(
-        (orderedItem) =>
-          ({
-            ...orderedItem,
-            title: orderedItem.item.title,
-            slug: orderedItem.item.slug,
-            unitPrice: orderedItem.item.unitPrice,
-          }) satisfies OrderedItemModel,
-      );
-    } catch (error) {
-      throw new DatabaseError("Failed to get ordered items from database", {
-        operation: "getOrderedItems",
-        error,
-      });
-    }
-  }
-
-  async getOrderItem(id: string) {
-    try {
-      const orderedItem = await this.db.orderedItem.findUnique({
-        where: { id },
-        omit: { itemId: true, createdAt: true, updatedAt: true },
-        include: {
-          item: {
-            select: {
-              title: true,
-              slug: true,
-              unitPrice: true,
-            },
-          },
-        },
-      });
-      if (!orderedItem) return null;
-      return {
-        ...orderedItem,
-        title: orderedItem.item.title,
-        slug: orderedItem.item.slug,
-        unitPrice: orderedItem.item.unitPrice,
-      } as OrderedItemModel;
-    } catch (error) {
-      throw new DatabaseError("Failed to get ordered item from database", {
-        operation: "getOrderedItem",
-        itemId: id,
         error,
       });
     }
