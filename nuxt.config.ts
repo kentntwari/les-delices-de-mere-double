@@ -4,8 +4,17 @@ import tailwindcss from "@tailwindcss/vite";
 
 export default defineNuxtConfig({
   compatibilityDate: "2025-07-15",
+  sourcemap: false,
   devtools: { enabled: true },
   css: ["./app/assets/css/main.css"],
+  experimental: {
+    payloadExtraction: true,
+  },
+  // routeRules: {
+  //   // Cache API responses for 60 seconds with stale-while-revalidate
+  //   "/api/items/**": { swr: 60 },
+  //   "/api/orders": { swr: 30 },
+  // },
   modules: [
     "@formkit/auto-animate",
     "@vee-validate/nuxt",
@@ -13,6 +22,8 @@ export default defineNuxtConfig({
     "@clerk/nuxt",
     "shadcn-nuxt",
     "@nuxt/icon",
+    "@vueuse/nuxt",
+    "@nuxt/hints",
   ],
   vite: {
     plugins: [tailwindcss()],
@@ -32,8 +43,5 @@ export default defineNuxtConfig({
       { code: "fr", name: "Français", file: "fr.json" },
     ],
     strategy: "no_prefix",
-  },
-  imports: {
-    dirs: ["mvc"],
   },
 });
