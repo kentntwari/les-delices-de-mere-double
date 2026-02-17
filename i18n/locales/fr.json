@@ -40,9 +40,47 @@
           "no-menu-link": " Aller au Menu"
         },
         "items-list": {
+          "menu-header": "{item-count} articles ajoutés",
           "no-items": "Aucun article ajouté à la commande pour le moment.",
           "button-add-items": "Ajouter Article",
           "remove-item": "Supprimer Article"
+        },
+        "customer-details": {
+          "select-btn": "Sélectionner un client existant",
+          "create-btn-without-priors": "Créer nouveau",
+          "create-btn": "Créer nouveau client",
+          "form": {
+            "full-name": "Nom complet du client",
+            "phone-number": "Numéro de téléphone du client",
+            "whatsapp-number": "Numéro WhatsApp du client",
+            "is-same-as-whatsapp": "Identique au numéro WhatsApp",
+            "email-address": "Courriel du client",
+            "choose-existing-customer": "Choisir un client existant à la place"
+          }
+        },
+        "delivery-instructions": {
+          "form": {
+            "is-home-address": "Ceci est l'adresse principale du client"
+          },
+          "caution": {
+            "valid-address": "Seules les adresses canadiennes sont acceptées",
+            "fee-disclaimer": "Des frais de livraison minimum de 10$ seront appliqués. Vous pouvez modifier le montant à l'écran suivant"
+          }
+        },
+        "preview": {
+          "items-count": "{count} articles commandés",
+          "labels": {
+            "delivery-requested": "Livraison demandée",
+            "delivery-fee": "Frais de livraison",
+            "delivery-address": "Adresse de livraison",
+            "customer-info": "Informations client",
+            "total-cost": "Coût total"
+          },
+          "button": {
+            "modify": "modifier",
+            "is-delivery": "oui",
+            "is-no-delivery": "non"
+          }
         },
         "submit-button": {
           "final": "Créer",
@@ -59,9 +97,26 @@
       }
     }
   },
-  "pages":{
-    "menu":{
-      "header-title": "Articles ajoutés"
+  "pages": {
+    "orders": {
+      "header-title": "{orders-count} Commandes effectuées",
+      "no-orders": "Aucune commande trouvée",
+      "order-card": {
+        "view-details": "Voir les détails",
+        "status-label": "Statut",
+        "item-count": "{count} articles"
+      }
+    },
+    "menu": {
+      "header-title": "Articles ajoutés",
+      "item-card": {
+        "context-menu": {
+          "delete-item": "Supprimer",
+          "edit-item": "Modifier",
+          "edit-item-title": "Modifier le titre",
+          "edit-item-pricing": "Modifier le prix"
+        }
+      }
     }
   }
 }

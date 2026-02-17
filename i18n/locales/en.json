@@ -40,9 +40,51 @@
           "no-menu-link": " Go to Menu"
         },
         "items-list": {
+          "menu-header": "{item-count} items added",
           "no-items": "No items added to the order yet.",
           "button-add-items": "Add Item",
           "remove-item": "Remove Item"
+        },
+        "customer-details": {
+          "select-btn": "Select an existing customer",
+          "create-btn-without-priors": "create new",
+          "create-btn": "Create new customer",
+          "form": {
+            "full-name": "Customer full name",
+            "phone-number": "Customer phone number",
+            "whatsapp-number": "Customer whatsapp number",
+            "is-same-as-whatsapp": "Same as whatsapp number",
+            "email-address": "Customer email address",
+            "choose-existing-customer": "Choose existing customer instead"
+          }
+        },
+        "delivery-instructions": {
+          "form": {
+            "is-home-address": "This is the customer's home address"
+          },
+          "caution": {
+            "valid-address": "Only canadian addresses are accepted",
+            "fee-disclaimer": "A minimum delivery fee of $10 will be applied. You can modify the amount on the next screen"
+          }
+        },
+        "preview": {
+          "items-count": "{count} items ordered",
+          "labels": {
+            "delivery-requested": "Delivery requested",
+            "delivery-fee": "Delivery fee",
+            "delivery-address": "Delivery address",
+            "customer-info": "Customer info",
+            "total-cost": "Total cost"
+          },
+          "errors":{
+            "no-address": "No delivery address provided"
+          
+          },
+          "button": {
+            "modify": "modify",
+            "is-delivery": "yes",
+            "is-no-delivery": "no"
+          }
         },
         "submit-button": {
           "final": "Create",
@@ -60,8 +102,25 @@
     }
   },
   "pages": {
+    "orders": {
+      "header-title": "{orders-count} Orders made",
+      "no-orders": "No orders found",
+      "order-card": {
+        "view-details": "View details",
+        "status-label": "Status",
+        "item-count": "{count} items"
+      }
+    },
     "menu": {
-      "header-title": "Menu items added"
+      "header-title": " {items-count} Menu items added",
+      "item-card": {
+        "context-menu": {
+          "delete-item": "Delete",
+          "edit-item": "Edit",
+          "edit-item-title": "Edit title",
+          "edit-item-pricing": "Edit pricing"
+        }
+      }
     }
   }
 }
