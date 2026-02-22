@@ -21,6 +21,14 @@
   } = await useLazyFetch<{ data: TOrderDTO[] }>("/api/orders", {
     key: GET_ORDERS_KEY,
     default: () => ({ data: [] }),
+    getCachedData: (key, nuxtApp, ctx) => {
+      const cached =
+        (nuxtApp.payload.data?.[key] as { data: TOrderDTO[] } | undefined) ??
+        (nuxtApp.static.data[key] as { data: TOrderDTO[] } | undefined);
+
+      if (cached && "data" in cached && cached.data.length === 0) return;
+      return cached;
+    },
   });
 
   const aggregatePageTotal = computed(() => {
