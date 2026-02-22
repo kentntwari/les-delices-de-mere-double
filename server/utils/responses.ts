@@ -47,19 +47,17 @@ export function treatErrors(error: unknown, currentFileMetadata?: string) {
       `[H3 ERROR]: ${error.message}`,
     );
     throw error;
-  } else {
-    // TODO: Must implement pino for logging
-    // INFO: This should be interna-purpose only
-    logger.error(
-      {
-        err: error,
-        ...(currentFileMetadata && { file: currentFileMetadata }),
-      },
-      "[INTERNAL SERVER ERROR]: An unexpected error occurred",
-    );
-    throw createError({
-      statusCode: 500,
-      statusMessage: errorMap.sys.general.INTERNAL_SERVER_ERROR,
-    });
   }
+
+  logger.error(
+    {
+      err: error,
+      ...(currentFileMetadata && { file: currentFileMetadata }),
+    },
+    "[INTERNAL SERVER ERROR]: An unexpected error occurred",
+  );
+  throw createError({
+    statusCode: 500,
+    statusMessage: errorMap.sys.general.INTERNAL_SERVER_ERROR,
+  });
 }
