@@ -1,3 +1,5 @@
+import { type H3Event } from "h3";
+
 import { createRequestLogger } from "~~/server/utils/logger";
 import { UserController } from "../../../../mvc/controllers/user";
 import { treatErrors, treatResponses } from "~~/server/utils/responses";
@@ -28,14 +30,25 @@ export default defineEventHandler(async (event) => {
       { params: { userId } },
       "[PERMISSIONS REQUEST]: Fetching user permissions",
     );
-
-    const r = await new UserController(toWebRequest(event)).read({
-      userId,
-      intent: "GET_PERMISSIONS",
-    });
-
-    return treatResponses(event, r);
+    return treatResponses(
+      event,
+      await cachedUserPermissionsResponse(event, userId),
+    );
   } catch (error) {
     treatErrors(error);
   }
 });
+
+export const cachedUserPermissionsResponse = defineCachedFunction(
+  async (event: H3Event, userId: string) => {
+    return await new UserController(toWebRequest(event)).read({
+      userId,
+      intent: "GET_PERMISSIONS",
+    });
+  },
+  {
+    maxAge: 3600 * 24, // Cache for 24 hours
+    name: "userPermissionsResponse",
+    getKey: (event: H3Event, userId: string) => `user_permissions:${userId}`,
+  },
+);

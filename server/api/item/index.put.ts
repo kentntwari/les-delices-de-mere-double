@@ -1,6 +1,6 @@
 import { createRequestLogger } from "~~/server/utils/logger";
 import { MenuController } from "../../../mvc/controllers/menu";
-import { IMenuItemsCustomRequestHeaders } from "~~/shared/types";
+import { SilentSuccessResponse } from "~~/mvc/controllers/base";
 
 const log = createRequestLogger("server.api.item.index.put.ts");
 
@@ -27,13 +27,21 @@ export default defineEventHandler(async (event) => {
       (headers[customPricingHeader] === "true" ||
         headers[customPricingHeader.toLowerCase()] === "true") === true;
 
+    const cacheUtil = new CacheUtil(useStorage("cache"));
+
+    const invalidateMenuCache = async () => {
+      await cacheUtil.invalidateRouteCache("items", undefined, "menu");
+    };
+
     if (HasUpdateTitleHeader) {
       const r = await new MenuController(toWebRequest(event)).update("title");
+      if (r instanceof SilentSuccessResponse) await invalidateMenuCache();
       return treatResponses(event, r);
     }
 
     if (HasUpdatePricingHeader) {
       const r = await new MenuController(toWebRequest(event)).update("price");
+      if (r instanceof SilentSuccessResponse) await invalidateMenuCache();
       return treatResponses(event, r);
     }
 
