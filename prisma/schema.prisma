@@ -14,14 +14,15 @@ datasource db {
 }
 
 model User {
-  id          String          @id @default(cuid())
-  email       String          @unique
-  name        String
-  status      WhitelistStatus @default(PENDING)
-  role        Role            @default(USER)
-  permissions Permissions[]
-  createdAt   DateTime        @default(now()) @map("created_at")
-  updatedAt   DateTime        @updatedAt @map("updated_at")
+  id            String          @id @default(cuid())
+  email         String          @unique
+  name          String
+  status        WhitelistStatus @default(PENDING)
+  role          Role            @default(USER)
+  permissions   Permissions[]
+  orderComments OrderComment[]
+  createdAt     DateTime        @default(now()) @map("created_at")
+  updatedAt     DateTime        @updatedAt @map("updated_at")
 
   @@index([id, email], name: "user_id_email_idx")
   @@map("users")
@@ -46,30 +47,47 @@ model Customer {
 }
 
 model Order {
-  id            String        @id @default(cuid())
+  id            String         @id @default(cuid())
   items         OrderedItem[]
-  status        OrderStatus   @default(NOT_STARTED) @map("status")
-  paymentStatus PaymentStatus @default(UNPAID) @map("payment_status")
-  deliveryFee   Float?        @default(10.0) @map("delivery_fee")
-  customer      Customer?     @relation(fields: [customerId], references: [id], onDelete: Cascade, onUpdate: Cascade)
-  customerId    String?       @map("customer_id")
-  orderLogs     OrderLogs[]
-  createdAt     DateTime      @default(now()) @map("created_at")
-  updatedAt     DateTime      @updatedAt @map("updated_at")
+  status        OrderStatus    @default(NOT_STARTED) @map("status")
+  paymentStatus PaymentStatus  @default(UNPAID) @map("payment_status")
+  deliveryFee   Float?         @default(10.0) @map("delivery_fee")
+  customer      Customer?      @relation(fields: [customerId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  customerId    String?        @map("customer_id")
+  orderLogs     OrderLog[]
+  orderComments OrderComment[]
+  createdAt     DateTime       @default(now()) @map("created_at")
+  updatedAt     DateTime       @updatedAt @map("updated_at")
 
   @@index([id], name: "order_id_idx")
   @@map("orders")
 }
 
-model OrderLogs {
+model OrderLog {
   id        String   @id @default(cuid())
   message   String   @db.Text
   order     Order    @relation(fields: [orderId], references: [id], onDelete: Cascade, onUpdate: Cascade)
-  orderId   String   @unique @map("order_id")
+  orderId   String   @map("order_id")
   createdAt DateTime @default(now()) @map("created_at")
 
   @@index([id, orderId], name: "order_logs_id_order_id_idx")
   @@map("order_logs")
+}
+
+model OrderComment {
+  id           String   @id @default(cuid())
+  comment      String   @db.VarChar(500)
+  order        Order    @relation(fields: [orderId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  orderId      String   @map("order_id")
+  user         User?    @relation(fields: [userId], references: [id])
+  userId       String?  @map("from_user_id")
+  taggedUserId String?  @map("tagged_user_id")
+  likedBy      String[] @map("liked_by")
+  likedCount   Int      @default(0) @map("liked_count")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  @@index([id, orderId], name: "order_comments_id_order_id_idx")
+  @@map("order_comments")
 }
 
 model OrderedItem {
@@ -78,7 +96,7 @@ model OrderedItem {
   itemId    String   @map("item_id")
   quantity  Int      @default(1)
   order     Order?   @relation(fields: [orderId], references: [id], onDelete: SetNull, onUpdate: Cascade)
-  orderId   String?
+  orderId   String?  @map("order_id")
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
