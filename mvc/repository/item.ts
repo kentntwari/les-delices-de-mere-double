@@ -12,6 +12,7 @@ export const RepositoryFailuresMessages = {
   getMenuItem: "Failed to get menu item from database",
   createMenuItem: "Failed to create menu item in database",
   updateMenuItem: "Failed to update menu item in database",
+  deleteMenuItem: "Failed to delete menu item from database",
 } as const;
 
 interface IItemRepository {
@@ -21,6 +22,7 @@ interface IItemRepository {
   updateMenuItem(
     data: Partial<Omit<MenuItemModel, "slug">>,
   ): Promise<MenuItemModel>;
+  deleteMenuItem(id: string): Promise<void>;
 }
 
 export class ItemRepository implements IItemRepository {
@@ -71,8 +73,8 @@ export class ItemRepository implements IItemRepository {
       return await this.db.menuItem.create({
         data: {
           id: data.id,
-          title: data.title,
-          description: data.description,
+          title: data.title.toLowerCase(),
+          description: data.description?.toLowerCase(),
           slug: data.slug,
           unitPrice: data.unitPrice,
         },
@@ -102,8 +104,9 @@ export class ItemRepository implements IItemRepository {
       return await this.db.menuItem.update({
         where: { id: data.id },
         data: {
-          title: data.title ?? currentItem.title,
-          description: data.description ?? currentItem.description,
+          title: data.title?.toLowerCase() ?? currentItem.title,
+          description:
+            data.description?.toLowerCase() ?? currentItem.description,
           unitPrice: data.unitPrice ?? currentItem.unitPrice,
         },
       });
@@ -112,6 +115,20 @@ export class ItemRepository implements IItemRepository {
       throw new DatabaseError(RepositoryFailuresMessages.updateMenuItem, {
         operation: "updateMenuItem",
         data,
+        error,
+      });
+    }
+  }
+
+  async deleteMenuItem(id: string) {
+    try {
+      await this.db.menuItem.delete({
+        where: { id },
+      });
+    } catch (error) {
+      throw new DatabaseError(RepositoryFailuresMessages.deleteMenuItem, {
+        operation: "deleteMenuItem",
+        itemId: id,
         error,
       });
     }
