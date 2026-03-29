@@ -20,7 +20,7 @@
 </script>
 <template>
   <NuxtLayout>
-    <main class="t">
+    <main>
       <NuxtPage />
     </main>
     <UIToaster
