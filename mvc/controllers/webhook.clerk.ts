@@ -4,6 +4,7 @@ import { BadRequestResponse, BaseController, JsonResponse } from "./base";
 import { NetworkError } from "../errors.appwide";
 import { UserService } from "../service/user";
 import { UserMapper } from "../mapper/user";
+import { UserTransformer } from "../transformers/user";
 
 export class WebhookClerkController extends BaseController {
   private _webhookEvent: WebhookEvent | null = null;
@@ -11,7 +12,7 @@ export class WebhookClerkController extends BaseController {
   constructor(
     req: Request,
     private service: UserService = new UserService(),
-    private mapper: UserMapper= new UserMapper()
+    private mapper: UserMapper = new UserMapper(),
   ) {
     super(req);
   }
@@ -59,7 +60,7 @@ export class WebhookClerkController extends BaseController {
         case event.type === "user.created":
           // TODO: Should write to clerk metadata for faster processing in policy middleware
           const b = await this.service.registerUser(
-            this.mapper.fromClerkWebhookEvent(event.data)
+            UserTransformer.fromClerkWebhookEvent(event.data),
           );
 
           return new JsonResponse({

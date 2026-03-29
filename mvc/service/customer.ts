@@ -5,6 +5,7 @@ import { CustomerRepository } from "../repository/customer";
 import { CustomerMapper } from "../mapper/customer";
 import { CustomerFactory } from "../factories/customer";
 import { CustomerEntity } from "../entities/customer";
+import { CustomerTransformer } from "../transformers/customer";
 
 import { type TCustomerSchema as TCustomerDTO } from "../../shared/utils/schemas.zod";
 
@@ -29,9 +30,9 @@ export class CustomerService extends BaseService {
   async createCustomer(data: unknown) {
     try {
       const validated = this.factory.validate(data);
-      const customer = await this.repository.createCustomer({
-        ...this.mapper.toCreatePayload(validated),
-      });
+      const customer = await this.repository.createCustomer(
+        CustomerTransformer.toCreatePayload(validated),
+      );
       return this.mapper.toEntity(customer);
     } catch (error) {
       this.defaultMapError(error, "service.customer.createCustomer");
