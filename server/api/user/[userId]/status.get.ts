@@ -63,8 +63,7 @@ export const cachedUserStatusResponse = defineCachedFunction(
   },
   {
     maxAge: 3600 * 24,
-    swr: true, // Cache for 24 hours with stale-while-revalidate
-    // Cache for 24 hours
+    swr: true,
     name: "user",
     getKey: (event: H3Event, userId: string) => `status_${userId}`,
   },

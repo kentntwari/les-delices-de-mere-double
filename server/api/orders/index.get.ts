@@ -3,7 +3,7 @@ import { OrderController } from "../../../mvc/controllers/order";
 
 const log = createRequestLogger("server.api.orders.index.get.ts");
 
-export default defineCachedEventHandler(
+export default defineEventHandler(
   async (event) => {
     try {
       log.info(
@@ -18,8 +18,5 @@ export default defineCachedEventHandler(
     } catch (error) {
       treatErrors(error);
     }
-  },
-  {
-    name: "orders",
   },
 );
