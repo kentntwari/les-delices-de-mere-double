@@ -1,5 +1,5 @@
 import { BaseService } from "./base";
-import { OrderRepository } from "../repository/order";
+import { OrderRepository, type OrderModel } from "../repository/order";
 import { OrderMapper } from "../mapper/order";
 import { OrderLogsRepository } from "../repository/logs";
 import { OrderTransformer } from "../transformers/order";
@@ -158,8 +158,13 @@ export class OrderService extends BaseService {
     }
   }
 
-  async markAsPaid(orderId: string, userId: string) {
-    let isPaid: boolean = false;
+  async updatePaymentStatus(
+    status: OrderModel["paymentStatus"],
+    orderId: string,
+    userId: string,
+  ) {
+    let isUpdated: boolean = false;
+
     let orderTimeStamp: string | null = null;
 
     try {
@@ -172,28 +177,28 @@ export class OrderService extends BaseService {
           {
             userId,
           },
-          "User not found during markAsPaid - defaulting to 'system' for order logs",
+          "User not found during updatePaymentStatus - defaulting to 'system' for order logs",
         );
       const o = await this.repository.getOrder(orderId);
       if (!o)
         throw new ApplicationError("Order not found", {
-          operation: "service.order.markAsPaid",
+          operation: "service.order.updatePaymentStatus",
           orderId,
         });
-      else if (o.paymentStatus === "PAID") return;
-      else await this.repository.updateOrderPaymentStatus(orderId, "PAID");
+      else if (o.paymentStatus === status) return;
+      else await this.repository.updateOrderPaymentStatus(orderId, status);
 
-      isPaid = true;
+      isUpdated = true;
     } catch (error) {
-      this.defaultMapError(error, "service.order.markAsPaid");
+      this.defaultMapError(error, "service.order.updatePaymentStatus");
       throw error;
     } finally {
-      if (isPaid)
+      if (isUpdated)
         await this.logsRepo
           .createLog(
             orderId,
             OrderLogsRepository.updatePaymentStatusLogMessage(
-              "PAID",
+              status,
               orderTimeStamp || new Date().toISOString(),
               this.author || "system",
             ),
@@ -202,60 +207,7 @@ export class OrderService extends BaseService {
             log.error(
               {
                 err: logError,
-                operation: "service.order.markAsPaid - createLog",
-                orderId,
-              },
-              "Failed to create order log (best-effort)",
-            );
-          });
-    }
-  }
-
-  async revertToUnpaid(orderId: string, userId: string) {
-    let isReverted: boolean = false;
-    let orderTimeStamp: string | null = null;
-
-    try {
-      tryHealthCheck();
-
-      const user = await this.userService.readUser(userId);
-
-      if (!user)
-        log.warn(
-          {
-            userId,
-          },
-          "User not found during revertToUnpaid - defaulting to 'system' for order logs",
-        );
-      const o = await this.repository.getOrder(orderId);
-      if (!o)
-        throw new ApplicationError("Order not found", {
-          operation: "service.order.revertToUnpaid",
-          orderId,
-        });
-      else if (o.paymentStatus === "UNPAID") return;
-      else await this.repository.updateOrderPaymentStatus(orderId, "UNPAID");
-
-      isReverted = true;
-    } catch (error) {
-      this.defaultMapError(error, "service.order.revertToUnpaid");
-      throw error;
-    } finally {
-      if (isReverted)
-        await this.logsRepo
-          .createLog(
-            orderId,
-            OrderLogsRepository.updatePaymentStatusLogMessage(
-              "UNPAID",
-              orderTimeStamp || new Date().toISOString(),
-              this.author || "system",
-            ),
-          )
-          .catch((logError) => {
-            log.error(
-              {
-                err: logError,
-                operation: "service.order.revertToUnpaid - createLog",
+                operation: "service.order.updatePaymentStatus - createLog",
                 orderId,
               },
               "Failed to create order log (best-effort)",

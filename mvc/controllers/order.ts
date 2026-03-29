@@ -123,7 +123,7 @@ export class OrderController extends BaseController {
         try {
           await this.service
             .defineAuthor(this.originator_user_id)
-            .markAsPaid(orderId, this.originator_user_id);
+            .updatePaymentStatus("PAID", orderId, this.originator_user_id);
           return new SilentSuccessResponse();
         } catch (error) {
           this.logError(error, {
@@ -140,7 +140,7 @@ export class OrderController extends BaseController {
         try {
           await this.service
             .defineAuthor(this.originator_user_id)
-            .revertToUnpaid(orderId, this.originator_user_id);
+            .updatePaymentStatus("UNPAID", orderId, this.originator_user_id);
           return new SilentSuccessResponse();
         } catch (error) {
           this.logError(error, {
