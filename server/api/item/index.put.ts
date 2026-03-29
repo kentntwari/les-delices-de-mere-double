@@ -1,9 +1,12 @@
 import { createRequestLogger } from "~~/server/utils/logger";
-import { MenuController } from "../../../mvc/controllers/menu";
+import { MenuController } from "~~/mvc/controllers/menu";
 import { SilentSuccessResponse } from "~~/mvc/controllers/base";
+import { CacheError } from "~~/server/utils/cache";
 
 const log = createRequestLogger("server.api.item.index.put.ts");
 
+/* FIX: This endpoint should move to /item/[itemId].put.ts */
+/* FIX: id of the item should be extracted from the URL parameter */
 export default defineEventHandler(async (event) => {
   try {
     log.info(
@@ -30,7 +33,22 @@ export default defineEventHandler(async (event) => {
     const cacheUtil = new CacheUtil(useStorage("cache"));
 
     const invalidateMenuCache = async () => {
-      await cacheUtil.invalidateRouteCache("items", undefined, "menu");
+      await cacheUtil
+        .route("items")
+        .invalidate()
+        .catch((error) => {
+          log.warn(
+            event.path,
+            event.method,
+            {
+              error:
+                error instanceof CacheError
+                  ? error.message
+                  : JSON.stringify(error),
+            },
+            "Failed to invalidate menu cache after updating menu item",
+          );
+        });
     };
 
     if (HasUpdateTitleHeader) {
@@ -50,6 +68,6 @@ export default defineEventHandler(async (event) => {
       statusMessage: "No valid update headers provided",
     });
   } catch (error) {
-    treatErrors(error);
+    return treatErrors(error);
   }
 });
