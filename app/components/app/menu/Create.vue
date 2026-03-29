@@ -37,8 +37,8 @@
         as="div"
       >
         <form
-          @submit.prevent="
-            handleSubmit(async (v) => {
+          @submit="
+            handleSubmit($event, async (v) => {
               // Two-phase optimistic update pattern:
               //
               // 1. Emit 'create' immediately so parent can apply optimistic UI update
