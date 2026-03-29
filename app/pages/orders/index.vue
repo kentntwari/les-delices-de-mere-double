@@ -4,9 +4,10 @@
 
   import type { TProvidedInteractionState } from "~/types";
   import type { TOrderDTO } from "~~/mvc/mapper/order";
+  import type { OrderTransformer } from "~~/mvc/transformers/order";
 
   import AppOrderCreatePanel from "~/components/app/order/CreatePanel.vue";
-  import UISkeletonDefault from "~/components/ui/skeleton/Default.vue";
+  import AppOrderPreviewEditPanel from "~/components/app/order/PreviewEdit.Panel.vue";
 
   import { GET_ORDERS_KEY, INJECT_FIRST_INTERACTION } from "~/app.keys";
 
@@ -21,14 +22,8 @@
   } = await useLazyFetch<{ data: TOrderDTO[] }>("/api/orders", {
     key: GET_ORDERS_KEY,
     default: () => ({ data: [] }),
-    getCachedData: (key, nuxtApp, ctx) => {
-      const cached =
-        (nuxtApp.payload.data?.[key] as { data: TOrderDTO[] } | undefined) ??
-        (nuxtApp.static.data[key] as { data: TOrderDTO[] } | undefined);
-
-      if (cached && "data" in cached && cached.data.length === 0) return;
-      return cached;
-    },
+    //TODO: Eventually leverage getCachedData
+    //INFO: See commitOrderToServer function for an example of leveraging getCachedData for optimistic updates
   });
 
   const aggregatePageTotal = computed(() => {
@@ -41,19 +36,6 @@
     );
     return total.toFixed(2);
   });
-
-  function adaptOrderStatus(status: TOrderDTO["status"]) {
-    switch (status) {
-      case "NOT_STARTED":
-        return "Not Started";
-      case "IN_PROGRESS":
-        return "In Progress";
-      case "COMPLETED":
-        return "Completed";
-      default:
-        return status;
-    }
-  }
 
   const emitted = shallowRef<{
     raw: TCreateOrderFormSchema;
@@ -81,10 +63,55 @@
       onResponse({ response }) {
         emitted.value = undefined;
         if (response.status === 204) panelKey.value = nanoid();
-        refresh();
+        /* TODO: Provide hook for background clearing of nuxtApp[payload] and nuxtApp[static] */
+        refreshNuxtData(GET_ORDERS_KEY);
       },
     });
   }, 500);
+
+  const commitOrderDeletionToServer = useDebounceFn(() => {
+    if (!currentPreviewedOrder.value?.id) return;
+    return $fetch(`/api/order/${currentPreviewedOrder.value.id}`, {
+      method: "DELETE",
+      onResponse({ response }) {
+        if (response.status === 204) panelKey.value = nanoid();
+        refreshNuxtData(GET_ORDERS_KEY);
+      },
+    });
+  }, 500);
+
+  const commitOrderPaymentStatusChangeToServer = useDebounceFn(
+    (
+      currentStatus: TOrderDTO["paymentStatus"],
+      newStatus: TOrderDTO["paymentStatus"],
+      intent: THandleOrderIntentsSchema,
+    ) => {
+      if (!currentPreviewedOrder.value?.id) return;
+
+      return $fetch(`/api/order/${currentPreviewedOrder.value.id}`, {
+        method: "PUT",
+        body: { paymentStatus: newStatus },
+        query: { intent },
+        onRequest() {
+          currentPreviewedOrder.value!.paymentStatus = newStatus;
+          increaseLogsCount();
+        },
+        onRequestError() {
+          currentPreviewedOrder.value!.paymentStatus = currentStatus;
+          decreaseLogsCount();
+        },
+
+        onResponseError() {
+          currentPreviewedOrder.value!.paymentStatus = currentStatus;
+          decreaseLogsCount();
+        },
+        onResponse({ response }) {
+          if (response.status === 204) refreshNuxtData(GET_ORDERS_KEY);
+        },
+      });
+    },
+    500,
+  );
 
   const hasOrders = computed(() => {
     if (!orders.value) return false;
@@ -117,6 +144,16 @@
     }
   }
 
+  function deleteOptimisticOrder() {
+    if (orders.value.data) {
+      orders.value = {
+        data: orders.value.data.filter(
+          (order) => order.id !== currentPreviewedOrder.value?.id,
+        ),
+      };
+    }
+  }
+
   function rollbackOptimisticOrder() {
     if (!emitted.value) return orders.value;
     if (orders.value.data) {
@@ -140,11 +177,88 @@
       });
     },
   } satisfies InstanceType<typeof AppOrderCreatePanel>["$props"];
+
+  const currentPreviewedOrder = ref<Omit<TOrderDTO, "status"> | null>(null);
+
+  const previewedMetadata =
+    shallowRef<
+      InstanceType<typeof AppOrderPreviewEditPanel>["$props"]["previewMetadata"]
+    >(undefined);
+
+  async function getPreviewMetadata() {
+    try {
+      const b = await $fetch<{
+        data: ReturnType<typeof OrderTransformer.toCountMetadata>;
+      }>("api/order/" + currentPreviewedOrder.value?.id + "/metadata/count", {
+        method: "GET",
+        onRequest() {
+          if (previewedMetadata.value)
+            previewedMetadata.value = {
+              ...previewedMetadata.value,
+              count: {
+                comments: "?",
+                items: "?",
+                logs: "?",
+              },
+            };
+        },
+      });
+
+      previewedMetadata.value = {
+        ...previewedMetadata.value,
+        count: {
+          comments: b.data?.comments ?? "?",
+          items: b.data?.items ?? "?",
+          logs: b.data?.logs ?? "?",
+        },
+      };
+    } catch (error) {
+      console.log("Failed to fetch preview metadata");
+      previewedMetadata.value = {
+        ...previewedMetadata.value,
+        count: {
+          comments: "?",
+          items: currentPreviewedOrder.value
+            ? currentPreviewedOrder.value.items.length.toString()
+            : "?",
+          logs: "?",
+        },
+      };
+    }
+  }
+
+  function increaseLogsCount() {
+    if (!previewedMetadata.value) return;
+    if (!previewedMetadata.value.count) return;
+    if (previewedMetadata.value.count.logs === "?") return;
+
+    previewedMetadata.value = {
+      ...previewedMetadata.value,
+      count: {
+        ...previewedMetadata.value.count,
+        logs: (parseInt(previewedMetadata.value.count.logs) + 1).toString(),
+      },
+    };
+  }
+
+  function decreaseLogsCount() {
+    if (!previewedMetadata.value) return;
+    if (!previewedMetadata.value.count) return;
+    if (previewedMetadata.value.count.logs === "?") return;
+
+    previewedMetadata.value = {
+      ...previewedMetadata.value,
+      count: {
+        ...previewedMetadata.value.count,
+        logs: (parseInt(previewedMetadata.value.count.logs) - 1).toString(),
+      },
+    };
+  }
 </script>
 
 <template>
   <section v-if="status === 'pending' && !hasOrders" class="container">
-    <UISkeletonDefault />
+    <AppSkeletonDefault />
   </section>
   <section
     class="container h-full grid items-center justify-center gap-y-6"
@@ -155,6 +269,7 @@
       <AppOrderCreatePanel v-bind="appOrderCreatePanelBindings" />
     </div>
   </section>
+
   <section class="h-full grid grid-rows-[auto_1fr]" v-else>
     <aside class="py-6 border-b border-neutral-grey-600">
       <div class="container w-full flex items-center justify-between">
@@ -184,49 +299,110 @@
         v-show="hasOrders"
       >
         <li
-          class="p-4 min-h-14 bg-secondary-200 hover:bg-secondary-300/30 flex justify-between rounded-xl cursor-pointer"
+          class="min-h-14 bg-secondary-200 hover:bg-secondary-300/30 rounded-xl"
           v-for="order in orders.data"
           :key="order.id"
         >
-          <span class="block space-x-4">
-            <small
-              class="inline-block min-w-[104px] text-base text-primary-1100"
-              >#{{ order.id }}
-            </small>
-            <small
-              v-for="(item, idx) in order.items.slice(0, 3)"
-              :key="item.id"
-            >
-              <strong class="text-base font-semibold text-primary-1100">{{
-                item.title
-              }}</strong>
-              <em class="btn-pill bg-accent-one-400"
-                >Qty: {{ item.quantity }}
-              </em>
-              <i
-                class="ml-2 not-italic font-semibold text-lg text-primary-1100"
-                :class="[idx < 3 ? 'inline-block' : 'hidden']"
-                v-show="order.items.length > 1"
-                >+</i
-              >
-            </small>
-            <strong v-show="order.items.length > 3">...</strong>
-            <div
-              class="inline-block space-x-2"
-              :class="[order.items.length < 2 ? '-ml-1' : '']"
-            >
-              <em class="w-24 btn-pill bg-[#51bd28]/60">{{
-                adaptOrderStatus(order.status)
-              }}</em>
-              <em class="m-0 w-18 btn-pill bg-neutral-grey-200 capitalize">{{
-                order.paymentStatus.toLocaleLowerCase()
-              }}</em>
-            </div>
-          </span>
-          <span class="block font-semibold text-center text-primary-1100"
-            >${{ order.total }}</span
+          <AppOrderPreviewEditPanel
+            :current-previewed-order="currentPreviewedOrder"
+            :preview-metadata="previewedMetadata"
+            @set-order="currentPreviewedOrder = order"
+            @delete-order="
+              async () => {
+                deleteOptimisticOrder();
+                await nextTick();
+                toast.promise(commitOrderDeletionToServer(), {
+                  loading: 'Deleting order...',
+                  success: 'Order deleted successfully!',
+                  error: 'Failed to delete order',
+                });
+              }
+            "
+            @fetch-metadata="getPreviewMetadata()"
+            @refresh-orders="refreshNuxtData(GET_ORDERS_KEY)"
+            @mark-as-paid="
+              () => {
+                return toast.promise(
+                  commitOrderPaymentStatusChangeToServer(
+                    order.paymentStatus,
+                    'PAID',
+                    'mark-as-paid',
+                  ),
+                  {
+                    loading: 'Marking order as paid...',
+                    success: 'Order marked as paid!',
+                    error: 'Failed to mark order as paid',
+                  },
+                );
+              }
+            "
+            @revert-payment-status="
+              (status) => {
+                return toast.promise(
+                  commitOrderPaymentStatusChangeToServer(
+                    order.paymentStatus,
+                    status,
+                    'revert-to-unpaid',
+                  ),
+                  {
+                    loading: 'Reverting payment status...',
+                    success: 'Payment status reverted!',
+                    error: 'Failed to revert payment status',
+                  },
+                );
+              }
+            "
           >
+            <span class="block space-x-4">
+              <small
+                class="inline-block min-w-[104px] text-base text-primary-1100"
+                >#{{ order.id }}
+              </small>
+              <small
+                v-for="(item, idx) in order.items.slice(0, 3)"
+                :key="item.id"
+              >
+                <strong class="text-base font-semibold text-primary-1100">{{
+                  item.title
+                }}</strong>
+                <em class="btn-pill bg-accent-one-400"
+                  >Qty: {{ item.quantity }}
+                </em>
+                <i
+                  class="ml-2 not-italic font-semibold text-lg text-primary-1100"
+                  :class="[
+                    order.items.length > 1 && idx !== order.items.length - 1
+                      ? 'inline-block'
+                      : 'hidden',
+                  ]"
+                  >+</i
+                >
+              </small>
+              <strong v-show="order.items.length > 3">...</strong>
+              <div
+                class="inline-block space-x-2"
+                :class="[order.items.length < 2 ? '-ml-1' : '']"
+              >
+                <em class="w-24 btn-pill bg-[#51bd28]/60">{{
+                  order.status === "NOT_STARTED"
+                    ? $t("order-status.not-started", "Not Started")
+                    : order.status === "IN_PROGRESS"
+                      ? $t("order-status.in-progress", "In Progress")
+                      : order.status === "COMPLETED"
+                        ? $t("order-status.completed", "Completed")
+                        : order.status
+                }}</em>
+                <em class="m-0 w-18 btn-pill bg-neutral-grey-200 capitalize">{{
+                  order.paymentStatus.toLocaleLowerCase()
+                }}</em>
+              </div>
+            </span>
+            <span class="block font-semibold text-center text-primary-1100"
+              >${{ order.total }}</span
+            >
+          </AppOrderPreviewEditPanel>
         </li>
+
         <li
           id="orders-total"
           class="self-start mt-[33px] grid grid-cols-2 items-center"
