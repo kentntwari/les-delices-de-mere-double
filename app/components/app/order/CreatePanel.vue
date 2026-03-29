@@ -76,8 +76,10 @@
       })),
       total: formItemsTotal.value.toString(),
     });
-    dialogActions.closeDialog();
+
     await nextTick();
+
+    dialogActions.closeDialog();
   });
 
   const {
@@ -169,9 +171,9 @@
     isRestart: ref(false),
     showText: computed(() => {
       if (alertActions.isItems.value)
-        return "This action cannot be undone. All the items you've added to this order will be removed.";
+        return useI18n().t("components.alerts.order.delete-items.description");
       if (alertActions.isRestart.value)
-        return "This action cannot be undone. All possible progress you've made in this order will be lost.";
+        return useI18n().t("components.alerts.order.restart");
     }),
     openAlert: () => {
       alertActions.isAlertOpen.value = true;
@@ -471,15 +473,17 @@
 
             <UIAlertDialogContent>
               <UIAlertDialogHeader>
-                <UIAlertDialogTitle class="text-primary-1300"
-                  >Are you absolutely sure?</UIAlertDialogTitle
-                >
+                <UIAlertDialogTitle class="text-primary-1300">{{
+                  $t("components.alerts.generic.title")
+                }}</UIAlertDialogTitle>
                 <UIAlertDialogDescription>
                   {{ alertActions.showText.value }}
                 </UIAlertDialogDescription>
               </UIAlertDialogHeader>
               <UIAlertDialogFooter>
-                <UIAlertDialogCancel>Cancel</UIAlertDialogCancel>
+                <UIAlertDialogCancel>{{
+                  $t("components.alerts.generic.cancel-button")
+                }}</UIAlertDialogCancel>
                 <UIButton
                   @click="
                     () => {
@@ -489,7 +493,9 @@
                       return alertActions.closeAlert();
                     }
                   "
-                  >Continue</UIButton
+                  >{{
+                    $t("components.alerts.generic.confirm-button")
+                  }}</UIButton
                 >
               </UIAlertDialogFooter>
             </UIAlertDialogContent>

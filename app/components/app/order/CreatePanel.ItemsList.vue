@@ -1,13 +1,6 @@
 <script lang="ts" setup>
   import { nanoid } from "nanoid";
-  import { Plus, X, Info } from "lucide-vue-next";
-
-  import {
-    ContextMenu as UIContextMenu,
-    ContextMenuTrigger as UIContextMenuTrigger,
-    ContextMenuContent as UIContextMenuContent,
-    ContextMenuItem as UIContextMenuItem,
-  } from "~/components/ui/contextMenu";
+  import { Plus, Info } from "lucide-vue-next";
 
   import { GET_MENU_ITEMS_KEY } from "~/app.keys";
 
@@ -50,7 +43,9 @@
         :variant="'link'"
         class="text-red-700 hover:no-underline hover:text-red-900"
         @click="emits('remove-all')"
-        >Remove all</UIButton
+        >{{
+          $t("components.order.create-panel.items-list.remove-all")
+        }}</UIButton
       >
     </div>
     <p v-if="data.length === 0">
@@ -61,94 +56,26 @@
         v-for="(field, idx) in fields"
         class="w-full flex items-center gap-x-2"
       >
-        <UIContextMenu>
-          <UIContextMenuTrigger as-child>
-            <div
-              class="w-full px-1 flex items-center gap-x-2 lg:h-10 bg-secondary-200 rounded-sm"
-            >
-              <Field
-                :name="`items[${idx}].quantity`"
-                v-slot="{ field: f, handleChange }"
-                :keep-value="true"
-              >
-                <UISelect :default-value="f.value" v-model="f.value">
-                  <UISelectTrigger
-                    class="bg-neutral-grey-100 border-neutral-grey-600 data-[size=default]:h-8"
-                  >
-                    <UISelectValue class="text-secondary-1300" />
-                  </UISelectTrigger>
-                  <UISelectContent>
-                    <UISelectItem
-                      v-for="n in 10"
-                      :key="n"
-                      :value="n"
-                      @select="(e: Event) => handleChange(n)"
-                    >
-                      {{ n }}
-                    </UISelectItem>
-                  </UISelectContent>
-                </UISelect>
-              </Field>
-
-              <span class="block">
-                <X :size="20" class="text-secondary-1300" />
-              </span>
-
-              <Field
-                :name="`items[${idx}].title`"
-                :keep-value="true"
-                v-slot="{ field: f, handleChange }"
-              >
-                <UISelect :default-value="f.value" v-model="f.value">
-                  <UISelectTrigger
-                    class="bg-neutral-grey-100 border-neutral-grey-600 data-[size=default]:h-8 min-w-32"
-                  >
-                    <UISelectValue
-                      class="text-secondary-1300"
-                      :placeholder="'Select item...'"
-                    />
-                  </UISelectTrigger>
-                  <UISelectContent>
-                    <UISelectItem
-                      v-for="n in menuItems?.data.items"
-                      :key="n.id"
-                      :value="n.title"
-                      @select="
-                        (e: Event) => {
-                          update(idx, {
-                            ...field.value,
-                            id: n.id,
-                            title: n.title,
-                            unitPrice: n.unitPrice,
-                          });
-                        }
-                      "
-                    >
-                      {{ n.title }}
-                    </UISelectItem>
-                  </UISelectContent>
-                </UISelect>
-              </Field>
-
-              <span class="flex-1 text-right text-secondary-1300">
-                {{ field.value.quantity }}*${{ field.value.unitPrice }} = ${{
-                  field.value.quantity * field.value.unitPrice
-                }}
-              </span>
-            </div>
-          </UIContextMenuTrigger>
-          <UIContextMenuContent
-            class="min-w-20 bg-neutral-grey-200 border border-neutral-grey-600 rounded-md shadow-md"
-          >
-            <UIContextMenuItem
-              class="font-regular text-red-700 focus:bg-transparent focus:text-red-800"
-              @select="remove(idx)"
-              >{{
-                $t("components.order.create-panel.items-list.remove-item")
-              }}</UIContextMenuItem
-            >
-          </UIContextMenuContent>
-        </UIContextMenu>
+        <AppOrderPreviewEditPill
+          :type="'edit'"
+          :index="idx"
+          :menu-items="menuItems?.data.items || []"
+          :current-item="{
+            title: field.value.title,
+            quantity: field.value.quantity,
+            unitPrice: field.value.unitPrice,
+          }"
+          @select-item="
+            (item: TMenuSchema['items'][number]) =>
+              update(idx, {
+                ...field.value,
+                id: item.id,
+                title: item.title,
+                unitPrice: item.unitPrice,
+              })
+          "
+          @remove-item="remove(idx)"
+        />
       </li>
     </ul>
     <button
