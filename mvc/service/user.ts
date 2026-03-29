@@ -7,7 +7,7 @@ export class UserService extends BaseService {
   constructor(
     private repository: UserRepository = new UserRepository(),
     private factory: UserFactory = new UserFactory(),
-    private mapper: UserMapper = new UserMapper()
+    private mapper: UserMapper = new UserMapper(),
   ) {
     super();
   }
@@ -15,7 +15,6 @@ export class UserService extends BaseService {
   async readUser(id: string) {
     try {
       const model = await this.repository.getUser(id);
-
       if (!model) return null;
       return this.mapper.toEntity(model);
     } catch (error) {

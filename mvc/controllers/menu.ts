@@ -18,7 +18,6 @@ export class MenuController extends BaseController {
 
   async read() {
     try {
-      logger.info({ source: "controllers.menu.read" }, "Fetching menu items");
       const items = await this.service.listItems();
       return new JsonResponse({
         data: this.mapper.toDtoList(items),
@@ -35,7 +34,6 @@ export class MenuController extends BaseController {
 
   async create() {
     try {
-      logger.info({ source: "controllers.menu.create" }, "Creating menu item");
       await this.service.addNewItem(await this.getBody());
       return new SilentSuccessResponse();
     } catch (error) {
@@ -50,13 +48,8 @@ export class MenuController extends BaseController {
 
   async update(target: "title" | "price") {
     try {
-      logger.info(
-        { source: "controllers.menu.update" },
-        `Updating menu item ${target}`,
-      );
-
       const body = await this.getBody();
-      
+
       if (target === "title")
         await this.service.updateItem("UPDATE_TITLE", body);
       else if (target === "price")
@@ -74,7 +67,17 @@ export class MenuController extends BaseController {
     }
   }
 
-  async delete(args: any) {
-    return new BadRequestResponse("Not implemented yet");
+  async delete(id: string) {
+    try {
+      await this.service.deleteItem(id);
+      return new SilentSuccessResponse();
+    } catch (error) {
+      this.logError(error, {
+        origin: "controllers.menu.delete",
+      });
+      return this.mapErrorResponse(error, {
+        origin: "controllers.menu.delete",
+      });
+    }
   }
 }

@@ -1,22 +1,31 @@
 import { BaseMapper } from "./base";
 
+import {
+  OrderEntity,
+  OrderCommentEntity,
+  OrderLogEntity,
+} from "../entities/order";
+import { OrderedItemEntity } from "../entities/item";
+
 import type {
   OrderModel,
-  TCreateOrderItemParam,
-  TCreateOrderDeliveryInfo,
+  OrderCommentModel,
+  OrderLogModel,
 } from "../repository/order";
-import type {
-  TOrderSchema,
-  TCreateOrderFormSchema,
-} from "../../shared/utils/schemas.zod";
-
-import { OrderEntity } from "../entities/order";
-import { OrderedItemEntity } from "../entities/item";
+import type { TOrderSchema } from "../../shared/utils/schemas.zod";
 
 export type TOrderDTO = TOrderSchema & {
   status: OrderEntity["status"];
   paymentStatus: OrderEntity["paymentStatus"];
 };
+
+export type TOrderLogDTO = Pick<OrderLogEntity, "message" | "createdAt">;
+
+export type TOrderCommentDTO = Pick<
+  OrderCommentEntity,
+  "id" | "comment" | "userName" | "likedCount" | "createdAt"
+>;
+
 export class OrderMapper extends BaseMapper<
   OrderEntity,
   TOrderDTO,
@@ -59,7 +68,6 @@ export class OrderMapper extends BaseMapper<
   toDto(entity: OrderEntity): TOrderDTO {
     return {
       id: entity.id,
-
       items: entity.items.map((item) => ({
         id: item.id,
         title: item.title,
@@ -79,22 +87,55 @@ export class OrderMapper extends BaseMapper<
     return entities.map((entity) => this.toDto(entity));
   }
 
-  toCreateOrderItems(
-    items: TCreateOrderFormSchema["items"],
-  ): TCreateOrderItemParam[] {
-    return items.map((item) => ({
-      itemId: item.id,
-      quantity: item.quantity,
-      itemUnitPrice: item.unitPrice,
-    }));
+  toLogEntity(data: OrderLogModel): OrderLogEntity {
+    return new OrderLogEntity(
+      data.id,
+      data.message,
+      data.createdAt.toISOString(),
+    );
   }
 
-  toDeliveryInfo(
-    delivery: TCreateOrderFormSchema["delivery"],
-  ): TCreateOrderDeliveryInfo {
+  toLogEntityList(data: OrderLogModel[]): OrderLogEntity[] {
+    return data.map((log) => this.toLogEntity(log));
+  }
+
+  toLogDto(entity: OrderLogEntity): TOrderLogDTO {
     return {
-      isRequested: delivery.isRequired,
-      fee: delivery.minimumFee,
+      message: entity.message,
+      createdAt: entity.createdAt,
     };
+  }
+
+  toLogDtoList(entities: OrderLogEntity[]): TOrderLogDTO[] {
+    return entities.map((entity) => this.toLogDto(entity));
+  }
+
+  toCommentEntity(data: OrderCommentModel): OrderCommentEntity {
+    return new OrderCommentEntity(
+      data.id,
+      data.comment,
+      data.userId ?? undefined,
+      data.user?.name ?? undefined,
+      data.likedCount,
+      data.createdAt.toISOString(),
+    );
+  }
+
+  toCommentEntityList(data: OrderCommentModel[]): OrderCommentEntity[] {
+    return data.map((comment) => this.toCommentEntity(comment));
+  }
+
+  toCommentDto(entity: OrderCommentEntity): TOrderCommentDTO {
+    return {
+      id: entity.id,
+      comment: entity.comment,
+      userName: entity.userName,
+      likedCount: entity.likedCount,
+      createdAt: entity.createdAt,
+    };
+  }
+
+  toCommentDtoList(entities: OrderCommentEntity[]): TOrderCommentDTO[] {
+    return entities.map((entity) => this.toCommentDto(entity));
   }
 }

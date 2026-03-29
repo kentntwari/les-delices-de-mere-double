@@ -45,23 +45,4 @@ export class CustomerMapper extends BaseMapper<
   toDtoList(entities: CustomerEntity[]): TCustomerDTO[] {
     return entities.map((entity) => this.toDto(entity));
   }
-
-  toCreatePayload(
-    cx: TCustomerDTO,
-  ): Parameters<CustomerRepository["createCustomer"]>[0] {
-    return {
-      name: cx.fullName,
-      email: cx.email || null,
-      phone: CustomerEntity.parsePhone({
-        countryCode: cx.phone.countryCode,
-        number: cx.phone.number,
-      }).toString(),
-      whatsappPhoneNumber: CustomerEntity.parsePhone({
-        countryCode: cx.whatsappNumber
-          ? cx.whatsappNumber.countryCode
-          : cx.phone.countryCode,
-        number: cx.whatsappNumber ? cx.whatsappNumber.number : cx.phone.number,
-      }).toString(),
-    };
-  }
 }

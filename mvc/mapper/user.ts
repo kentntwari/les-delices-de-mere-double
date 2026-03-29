@@ -43,14 +43,4 @@ export class UserMapper extends BaseMapper<UserEntity, TUserDTO, UserModel> {
       role: entity.role,
     };
   }
-
-  fromClerkWebhookEvent(user: UserJSON): TUserDTO {
-    return {
-      id: user.id,
-      firstName: user.first_name ?? "UNSPECIFED_FIRST_NAME",
-      lastName: user.last_name ?? "UNSPECIFED_LAST_NAME",
-      email:
-        user.email_addresses[0]?.email_address ?? "UNSPECIFED_EMAIL@DOMAIN.COM",
-    };
-  }
 }
