@@ -3,16 +3,16 @@
   import type { TCreateItemSchema, TUpdateItemIntents } from "#imports";
   import type { GenericObject } from "vee-validate";
   import type { FetchOptions } from "ofetch";
+  import type { IMenuItemsCustomRequestHeaders } from "~~/shared/types";
 
   import { toast } from "vue-sonner";
+  import { ShieldAlertIcon } from "lucide-vue-next";
 
-  import * as UISkeletonDefault from "~/components/ui/skeleton/Default.vue";
   import AppMenuCreate from "../../components/app/menu/Create.vue";
   import AppMenuItemCard from "../../components/app/menu/ItemCard.vue";
 
   import { GET_MENU_ITEMS_KEY, INJECT_FIRST_INTERACTION } from "~/app.keys";
   import { MenuItemEntity } from "~~/mvc/entities/item";
-  import type { IMenuItemsCustomRequestHeaders } from "~~/shared/types";
 
   definePageMeta({
     name: "Menu",
@@ -33,6 +33,14 @@
       interactionState.isFirstInteraction.value &&
       res.value?.data?.items?.length === 0,
   );
+
+  const hasMenu = computed(() => {
+    if (isOnboarding.value) return false;
+    if (!res.value) return false;
+    if (!res.value.data) return false;
+    if (res.value.data.items.length === 0) return false;
+    return true;
+  });
 
   const createNewItem = useDebounceFn(
     (
@@ -72,6 +80,23 @@
               : {}),
         },
         body: v,
+        ...options,
+      });
+    },
+    500,
+  );
+
+  const deleteMenuItem = useDebounceFn(
+    (
+      id: string,
+      options?: Omit<FetchOptions, "method" | "headers" | "body">,
+    ) => {
+      return $fetch("/api/item/" + id, {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: { id },
         ...options,
       });
     },
@@ -119,6 +144,17 @@
                   : {}),
             };
           }),
+        },
+      };
+    }
+  }
+
+  function removeOptimisticallyDeletedItem(id: string) {
+    if (res.value?.data) {
+      res.value = {
+        data: {
+          ...res.value.data,
+          items: res.value.data.items.filter((item) => item.id !== id),
         },
       };
     }
@@ -236,6 +272,34 @@
           },
         );
     },
+    onDelete: (id: string) => {
+      removeOptimisticallyDeletedItem(id);
+
+      toast.promise(
+        deleteMenuItem(id, {
+          onRequestError() {
+            appMenuItemCardComponentBindings.onError(
+              id,
+              "An error occurred while deleting the item.",
+            );
+          },
+          onResponse() {
+            appMenuItemCardComponentBindings.onSuccess();
+          },
+          onResponseError() {
+            appMenuItemCardComponentBindings.onError(
+              id,
+              "Could not delete the item.",
+            );
+          },
+        }),
+        {
+          loading: "Deleting...",
+          success: "Item deleted successfully!",
+          error: "An error occurred while deleting the item.",
+        },
+      );
+    },
     onSuccess: () => {
       refreshNuxtData(GET_MENU_ITEMS_KEY);
     },
@@ -250,8 +314,8 @@
 </script>
 
 <template>
-  <section v-if="!res">
-    <UISkeletonDefault />
+  <section class="h-full" v-if="!res">
+    <AppSkeletonDefault class="container" />
   </section>
   <section
     v-else-if="isOnboarding"
@@ -262,12 +326,16 @@
       <AppMenuCreate v-bind="appMenuCreateComponentBindings" />
     </div>
   </section>
-  <section class="grid grid-cols-2 gap-4" v-else>
+  <section class="h-full gap-4" v-else>
     <aside class="col-span-full py-6 border-b border-neutral-grey-600">
       <div class="container flex justify-between items-center">
         <header class="space-x-4">
           <h1 class="text-primary-1300 font-medium text-2xl lowercase">
-            {{ res.data.items.length }} {{ $t("pages.menu.header-title") }}
+            {{
+              $t("pages.menu.header-title", {
+                "items-count": res.data.items.length,
+              })
+            }}
           </h1>
         </header>
         <footer>
@@ -277,12 +345,33 @@
     </aside>
 
     <div class="container col-span-full mt-4 grid grid-cols-4 gap-4">
+      <div
+        class="mb-2 w-full h-10 col-span-full flex items-center gap-x-2 rounded-lg"
+        role="banner"
+      >
+        <ShieldAlertIcon :size="20" class="text-primary-500" />
+        <p class="text-sm text-primary-500">
+          {{
+            $t(
+              "pages.menu.onboarding-warning",
+              "Right click on an item for more options.",
+            )
+          }}
+        </p>
+      </div>
+      <p
+        class="col-span-full flex items-center justify-center text-center text-2xl text-primary-400"
+        v-show="!hasMenu"
+      >
+        {{ $t("pages.menu.no-items") }}
+      </p>
       <AppMenuItemCard
         v-for="item in res.data.items"
         :key="item.id"
         :item="item"
         class="col-span-1"
         v-bind="appMenuItemCardComponentBindings"
+        v-show="hasMenu"
       />
     </div>
   </section>
