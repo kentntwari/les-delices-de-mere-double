@@ -21,7 +21,7 @@ export class SuccessResponse extends Response {
   constructor(
     public message: string = "Success",
     public data: {},
-    headers: HeadersInit = {}
+    headers: HeadersInit = {},
   ) {
     super(JSON.stringify({ message, data }), {
       status: 200,
@@ -44,7 +44,11 @@ export class SilentSuccessResponse extends Response {
 export class JsonResponse<K extends TReturnJSONData> extends Response {
   public readonly name = "JSON RESPONSE";
 
-  constructor(public data: K, status: number = 200, headers: HeadersInit = {}) {
+  constructor(
+    public data: K,
+    status: number = 200,
+    headers: HeadersInit = {},
+  ) {
     super(JSON.stringify(data), {
       status,
       headers: { "Content-Type": "application/json", ...headers },
@@ -54,76 +58,86 @@ export class JsonResponse<K extends TReturnJSONData> extends Response {
 
 export class BadRequestResponse extends Response {
   public readonly name = "BAD REQUEST RESPONSE";
+  public readonly context: Record<string, string>;
 
   constructor(
     public message: string = "Bad Request",
     headers: HeadersInit = {},
-    context?: Record<string, string>
+    context?: Record<string, string>,
   ) {
     super(JSON.stringify({ error: message, context: context ?? {} }), {
       status: 400,
       headers: { "Content-Type": "application/json", ...headers },
     });
+    this.context = context ?? {};
   }
 }
 
 export class UnauthorizedResponse extends Response {
   public readonly name = "UNAUTHORIZED RESPONSE";
+  public readonly context: Record<string, string>;
 
   constructor(
     public message: string = "Unauthorized",
     headers: HeadersInit = {},
-    context?: Record<string, string>
+    context?: Record<string, string>,
   ) {
     super(JSON.stringify({ error: message, context: context ?? {} }), {
       status: 401,
       headers: { "Content-Type": "application/json", ...headers },
     });
+    this.context = context ?? {};
   }
 }
 
 export class ForbiddenResponse extends Response {
   public readonly name = "FORBIDDEN RESPONSE";
+  public readonly context: Record<string, string>;
 
   constructor(
     public message: string = "Forbidden",
     headers: HeadersInit = {},
-    context?: Record<string, string>
+    context?: Record<string, string>,
   ) {
     super(JSON.stringify({ error: message, context: context ?? {} }), {
       status: 403,
       headers: { "Content-Type": "application/json", ...headers },
     });
+    this.context = context ?? {};
   }
 }
 
 export class NotFoundResponse extends Response {
   public readonly name = "NOT FOUND RESPONSE";
+  public readonly context: Record<string, string>;
 
   constructor(
     public message: string = "Not Found",
     headers: HeadersInit = {},
-    context?: Record<string, string>
+    context?: Record<string, string>,
   ) {
     super(JSON.stringify({ error: message, context: context ?? {} }), {
       status: 404,
       headers: { "Content-Type": "application/json", ...headers },
     });
+    this.context = context ?? {};
   }
 }
 
 export class InternalServerErrorResponse extends Response {
   public readonly name = "INTERNAL SERVER ERROR RESPONSE";
+  public readonly context: Record<string, string>;
 
   constructor(
     public message: string = "Internal Server Error",
     context?: Record<string, string>,
-    headers: HeadersInit = {}
+    headers: HeadersInit = {},
   ) {
     super(JSON.stringify({ error: message, context: context ?? {} }), {
       status: 500,
       headers: { "Content-Type": "application/json", ...headers },
     });
+    this.context = context ?? {};
   }
 }
 
@@ -165,7 +179,7 @@ export abstract class BaseController {
           expectedContentType: "application/json or application/*+json",
           receivedContentType: contentType || "none",
           method,
-        }
+        },
       );
     }
   }
@@ -199,7 +213,7 @@ export abstract class BaseController {
               method,
               error: msg,
               cause: "Invalid JSON payload",
-            }
+            },
           );
 
         // Body was already consumed
@@ -211,7 +225,7 @@ export abstract class BaseController {
               method,
               error: msg,
               cause: "Request body stream already consumed",
-            }
+            },
           );
 
         // Request aborted while reading
@@ -222,7 +236,7 @@ export abstract class BaseController {
               method,
               error: msg,
               cause: "Request aborted while reading body",
-            }
+            },
           );
 
         default:
@@ -231,9 +245,27 @@ export abstract class BaseController {
             {
               method,
               error: msg,
-            }
+            },
           );
       }
+    }
+  }
+
+  protected getQuery(): Record<string, string> {
+    // Parses query string parameters from the request URL.
+    // Handles malformed URLs, duplicate keys (last value wins), and decoding errors.
+    try {
+      const url = new URL(this.url, "http://localhost");
+      const params: Record<string, string> = {};
+
+      url.searchParams.forEach((value, key) => {
+        params[key] = value;
+      });
+
+      return params;
+    } catch (e) {
+      this.logError(e, { context: "Failed to parse query parameters" });
+      return {};
     }
   }
 
@@ -249,7 +281,7 @@ export abstract class BaseController {
   public abstract create(args: any): Promise<PossibleResponse>;
   public abstract update(args: any): Promise<PossibleResponse>;
   public abstract delete(
-    args: any
+    ...args: any
   ): Promise<Omit<PossibleResponse, "JsonResponse" | "SuccessResponse">>;
 
   // TODO: Must implement this method
@@ -264,8 +296,8 @@ export abstract class BaseController {
         return new InternalServerErrorResponse(
           errorMap.sys.general.INTERNAL_SERVER_ERROR,
           {
-            context: JSON.stringify(error.context),
-          }
+            context: JSON.stringify({ originalError: error, ...context }),
+          },
         );
 
       case error instanceof ApplicationError:
@@ -273,8 +305,8 @@ export abstract class BaseController {
           errorMap.app.general.BAD_REQUEST,
           {},
           {
-            context: JSON.stringify(error.context),
-          }
+            context: JSON.stringify({ originalError: error, ...context }),
+          },
         );
 
       default:
@@ -282,7 +314,7 @@ export abstract class BaseController {
           errorMap.app.general.INTERNAL_SERVER_ERROR,
           {
             context: JSON.stringify({ originalError: error, ...context }),
-          }
+          },
         );
     }
   }
