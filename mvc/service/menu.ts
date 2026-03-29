@@ -17,6 +17,7 @@ export const MenuServiceFailuresMessages = {
   listItems: "Failed to list menu items",
   addNewItem: "Failed to add new menu item",
   updateItem: "Failed to update menu item",
+  deleteItem: "Failed to delete menu item",
 } as const;
 
 export class MenuService extends BaseService {
@@ -77,6 +78,15 @@ export class MenuService extends BaseService {
       await this.repository.updateMenuItem(validated);
     } catch (error) {
       this.defaultMapError(error, "service.menu.updateItem");
+      throw error;
+    }
+  }
+
+  async deleteItem(id: string): Promise<void> {
+    try {
+      await this.repository.deleteMenuItem(id);
+    } catch (error) {
+      this.defaultMapError(error, "service.menu.deleteItem");
       throw error;
     }
   }
