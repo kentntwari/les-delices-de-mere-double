@@ -43,7 +43,8 @@
           "menu-header": "{item-count} items added",
           "no-items": "No items added to the order yet.",
           "button-add-items": "Add Item",
-          "remove-item": "Remove Item"
+          "remove-item": "Remove Item",
+          "remove-all": "Remove all"
         },
         "customer-details": {
           "select-btn": "Select an existing customer",
@@ -76,9 +77,8 @@
             "customer-info": "Customer info",
             "total-cost": "Total cost"
           },
-          "errors":{
+          "errors": {
             "no-address": "No delivery address provided"
-          
           },
           "button": {
             "modify": "modify",
@@ -91,6 +91,20 @@
           "next": "Continue"
         },
         "restart-button": "Restart"
+      },
+      "preview-panel": {
+        "title": "Order preview",
+        "buttons": {
+          "view-customer-info": "View customer info",
+          "mark-as-paid": "Mark as paid"
+        }
+      },
+      "editor-panel": {
+        "title": "Edit order #{orderId}",
+        "buttons": {
+          "save-changes": "Save changes",
+          "cancel": "Cancel"
+        }
       }
     },
     "menu": {
@@ -98,6 +112,30 @@
         "label": "Label",
         "title": "Title of the menu item",
         "submit-button": "Save"
+      }
+    },
+    "alerts": {
+      "generic": {
+        "title": "Are  Absolutely sure?",
+        "description": "This action cannot be undone.",
+        "cancel-button": "Cancel",
+        "confirm-button": "Continue"
+      },
+      "order": {
+        "restart": {
+          "description": "This action cannot be undone. All possible progress you've made in this order will be lost."
+        },
+        "delete-order": {
+          "description": "This action cannot be undone. The order will be permanently deleted."
+        },
+        "delete-items": {
+          "description": "This action cannot be undone. All the items you've added to this order will be removed."
+        }
+      },
+      "menu": {
+        "delete-item": {
+          "description": "This action cannot be undone. The selected menu item will be removed."
+        }
       }
     }
   },
@@ -113,6 +151,7 @@
     },
     "menu": {
       "header-title": " {items-count} Menu items added",
+      "no-items": "No items found",
       "item-card": {
         "context-menu": {
           "delete-item": "Delete",

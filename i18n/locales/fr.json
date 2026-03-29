@@ -43,7 +43,8 @@
           "menu-header": "{item-count} articles ajoutés",
           "no-items": "Aucun article ajouté à la commande pour le moment.",
           "button-add-items": "Ajouter Article",
-          "remove-item": "Supprimer Article"
+          "remove-item": "Supprimer Article",
+          "remove-all": "Supprimer tout"
         },
         "customer-details": {
           "select-btn": "Sélectionner un client existant",
@@ -87,6 +88,20 @@
           "next": "Continuer"
         },
         "restart-button": "Refaire"
+      },
+      "preview-panel": {
+        "title": "Aperçu de la commande",
+        "buttons": {
+          "view-customer-info": "Voir détails du client",
+          "mark-as-paid": "Marquer payé"
+        }
+      },
+      "editor-panel": {
+        "title": "Modifier commande #{orderId}",
+        "buttons": {
+          "save-changes": "Enregistrer",
+          "cancel": "Annuler"
+        }
       }
     },
     "menu": {
@@ -94,6 +109,36 @@
         "label": "Étiquette",
         "title": "Titre de l'article du menu",
         "submit-button": "Enregistrer"
+      }
+    },
+    "alerts": {
+      "generic": {
+        "title": "Êtes-vous absolument sûr?",
+        "description": "Cette action ne peut pas être annulée.",
+        "cancel-button": "Annuler",
+        "confirm-button": "Continuer"
+      },
+      "order": {
+        "delete-order": {
+          "title": "Supprimer cette commande?",
+          "description": "Cette action ne peut pas être annulée. La commande sera définitivement supprimée.",
+          "cancel-button": "Annuler",
+          "confirm-button": "Continuer"
+        },
+        "delete-items": {
+          "title": "Supprimer les articles sélectionnés?",
+          "description": "Cette action ne peut pas être annulée.",
+          "cancel-button": "Annuler",
+          "confirm-button": "Continuer"
+        }
+      },
+      "menu": {
+        "delete-item": {
+          "title": "Supprimer cet article?",
+          "description": "Cette action ne peut pas être annulée.",
+          "cancel-button": "Annuler",
+          "confirm-button": "Continuer"
+        }
       }
     }
   },

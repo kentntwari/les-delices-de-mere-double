@@ -158,3 +158,14 @@ export const customerSchema = z.object({
     })
     .optional(),
 });
+
+export type THandleOrderIntentsSchema = z.infer<
+  typeof handleOrderIntentsSchema
+>;
+export const handleOrderIntentsSchema = z.enum([
+  "get-comments",
+  "get-logs",
+  "get-order-count-metadata",
+  "mark-as-paid",
+  "revert-to-unpaid",
+]);
