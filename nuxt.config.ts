@@ -39,9 +39,10 @@ export default defineNuxtConfig({
     "/api/items/**": {
       cache: { name: "items", maxAge: 60 * 60 * 24, swr: true },
     },
-    "/api/orders": { cache: { name: "orders", maxAge: 20 * 60, swr: true } },
+    "/api/orders": { cache: { name: "orders", maxAge: 20 * 60, swr:true } },
   },
   modules: [
+    "@pinia/nuxt",
     "@formkit/auto-animate",
     "@vee-validate/nuxt",
     "@nuxtjs/i18n",

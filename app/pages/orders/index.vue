@@ -10,21 +10,35 @@
   import AppOrderPreviewEditPanel from "~/components/app/order/PreviewEdit.Panel.vue";
 
   import { GET_ORDERS_KEY, INJECT_FIRST_INTERACTION } from "~/app.keys";
+  import { useOrderPreviewStore } from "~/stores/orderPreview";
+  import { storeToRefs } from "pinia";
+
+  const orderPreviewStore = useOrderPreviewStore();
 
   definePageMeta({
     name: "Orders",
   });
 
-  const {
-    status,
-    data: orders,
-    refresh,
-  } = await useLazyFetch<{ data: TOrderDTO[] }>("/api/orders", {
-    key: GET_ORDERS_KEY,
-    default: () => ({ data: [] }),
-    //TODO: Eventually leverage getCachedData
-    //INFO: See commitOrderToServer function for an example of leveraging getCachedData for optimistic updates
-  });
+  const shouldBypassCache = ref(false);
+  async function refreshOrders() {
+    shouldBypassCache.value = true;
+    await refreshNuxtData(GET_ORDERS_KEY);
+    shouldBypassCache.value = false;
+  }
+
+  const { status, data: orders } = useLazyFetch<{ data: TOrderDTO[] }>(
+    "/api/orders",
+    {
+      key: GET_ORDERS_KEY,
+      default: () => ({ data: [] }),
+      getCachedData(key, nuxtApp) {
+        if (shouldBypassCache.value) return undefined;
+        return (
+          nuxtApp.payload.data[key] ?? nuxtApp.static.data[key] ?? undefined
+        );
+      },
+    },
+  );
 
   const aggregatePageTotal = computed(() => {
     if (!orders.value) return "0.00";
@@ -60,58 +74,23 @@
         emitted.value = undefined;
         rollbackOptimisticOrder();
       },
-      onResponse({ response }) {
+      async onResponse({ response }) {
         emitted.value = undefined;
         if (response.status === 204) panelKey.value = nanoid();
-        /* TODO: Provide hook for background clearing of nuxtApp[payload] and nuxtApp[static] */
-        refreshNuxtData(GET_ORDERS_KEY);
+        await refreshOrders();
       },
     });
   }, 500);
 
-  const commitOrderDeletionToServer = useDebounceFn(() => {
-    if (!currentPreviewedOrder.value?.id) return;
-    return $fetch(`/api/order/${currentPreviewedOrder.value.id}`, {
+  const commitOrderDeletionToServer = useDebounceFn((id: string) => {
+    return $fetch(`/api/order/${id}`, {
       method: "DELETE",
-      onResponse({ response }) {
+      async onResponse({ response }) {
         if (response.status === 204) panelKey.value = nanoid();
-        refreshNuxtData(GET_ORDERS_KEY);
+        await refreshOrders();
       },
     });
   }, 500);
-
-  const commitOrderPaymentStatusChangeToServer = useDebounceFn(
-    (
-      currentStatus: TOrderDTO["paymentStatus"],
-      newStatus: TOrderDTO["paymentStatus"],
-      intent: THandleOrderIntentsSchema,
-    ) => {
-      if (!currentPreviewedOrder.value?.id) return;
-
-      return $fetch(`/api/order/${currentPreviewedOrder.value.id}`, {
-        method: "PUT",
-        body: { paymentStatus: newStatus },
-        query: { intent },
-        onRequest() {
-          currentPreviewedOrder.value!.paymentStatus = newStatus;
-          increaseLogsCount();
-        },
-        onRequestError() {
-          currentPreviewedOrder.value!.paymentStatus = currentStatus;
-          decreaseLogsCount();
-        },
-
-        onResponseError() {
-          currentPreviewedOrder.value!.paymentStatus = currentStatus;
-          decreaseLogsCount();
-        },
-        onResponse({ response }) {
-          if (response.status === 204) refreshNuxtData(GET_ORDERS_KEY);
-        },
-      });
-    },
-    500,
-  );
 
   const hasOrders = computed(() => {
     if (!orders.value) return false;
@@ -127,14 +106,16 @@
     },
   );
 
+  const ORDER_TEMP_ID = "OA0000";
   function addOptimisticOrder() {
     if (!emitted.value) return orders.value;
     if (orders.value.data) {
       orders.value = {
+        ...orders.value,
         data: [
           {
             ...emitted.value.validated,
-            id: nanoid(7),
+            id: ORDER_TEMP_ID,
             paymentStatus: "UNPAID",
             status: "NOT_STARTED",
           },
@@ -144,12 +125,11 @@
     }
   }
 
-  function deleteOptimisticOrder() {
+  function deleteOptimisticOrder(id: string) {
     if (orders.value.data) {
       orders.value = {
-        data: orders.value.data.filter(
-          (order) => order.id !== currentPreviewedOrder.value?.id,
-        ),
+        ...orders.value,
+        data: orders.value.data.filter((order) => order.id !== id),
       };
     }
   }
@@ -158,9 +138,8 @@
     if (!emitted.value) return orders.value;
     if (orders.value.data) {
       orders.value = {
-        data: orders.value.data.filter(
-          (order) => order.id !== emitted.value?.validated.id,
-        ),
+        ...orders.value,
+        data: orders.value.data.filter((order) => order.id !== ORDER_TEMP_ID),
       };
     }
   }
@@ -178,12 +157,12 @@
     },
   } satisfies InstanceType<typeof AppOrderCreatePanel>["$props"];
 
-  const currentPreviewedOrder = ref<Omit<TOrderDTO, "status"> | null>(null);
+  const { currentPreviewedOrder, previewedMetadata, paymentStatusUpdatedAt } =
+    storeToRefs(orderPreviewStore);
 
-  const previewedMetadata =
-    shallowRef<
-      InstanceType<typeof AppOrderPreviewEditPanel>["$props"]["previewMetadata"]
-    >(undefined);
+  watch(paymentStatusUpdatedAt, (val) => {
+    if (val) refreshOrders();
+  });
 
   async function getPreviewMetadata() {
     try {
@@ -225,34 +204,6 @@
         },
       };
     }
-  }
-
-  function increaseLogsCount() {
-    if (!previewedMetadata.value) return;
-    if (!previewedMetadata.value.count) return;
-    if (previewedMetadata.value.count.logs === "?") return;
-
-    previewedMetadata.value = {
-      ...previewedMetadata.value,
-      count: {
-        ...previewedMetadata.value.count,
-        logs: (parseInt(previewedMetadata.value.count.logs) + 1).toString(),
-      },
-    };
-  }
-
-  function decreaseLogsCount() {
-    if (!previewedMetadata.value) return;
-    if (!previewedMetadata.value.count) return;
-    if (previewedMetadata.value.count.logs === "?") return;
-
-    previewedMetadata.value = {
-      ...previewedMetadata.value,
-      count: {
-        ...previewedMetadata.value.count,
-        logs: (parseInt(previewedMetadata.value.count.logs) - 1).toString(),
-      },
-    };
   }
 </script>
 
@@ -308,10 +259,10 @@
             :preview-metadata="previewedMetadata"
             @set-order="currentPreviewedOrder = order"
             @delete-order="
-              async () => {
-                deleteOptimisticOrder();
+              async (id) => {
+                deleteOptimisticOrder(id);
                 await nextTick();
-                toast.promise(commitOrderDeletionToServer(), {
+                toast.promise(commitOrderDeletionToServer(id), {
                   loading: 'Deleting order...',
                   success: 'Order deleted successfully!',
                   error: 'Failed to delete order',
@@ -319,31 +270,19 @@
               }
             "
             @fetch-metadata="getPreviewMetadata()"
-            @refresh-orders="refreshNuxtData(GET_ORDERS_KEY)"
             @mark-as-paid="
               () => {
-                return toast.promise(
-                  commitOrderPaymentStatusChangeToServer(
-                    order.paymentStatus,
-                    'PAID',
-                    'mark-as-paid',
-                  ),
-                  {
-                    loading: 'Marking order as paid...',
-                    success: 'Order marked as paid!',
-                    error: 'Failed to mark order as paid',
-                  },
-                );
+                return toast.promise(orderPreviewStore.markAsPaid(), {
+                  loading: 'Marking order as paid...',
+                  success: 'Order marked as paid!',
+                  error: 'Failed to mark order as paid',
+                });
               }
             "
             @revert-payment-status="
               (status) => {
                 return toast.promise(
-                  commitOrderPaymentStatusChangeToServer(
-                    order.paymentStatus,
-                    status,
-                    'revert-to-unpaid',
-                  ),
+                  orderPreviewStore.revertPaymentStatus(status),
                   {
                     loading: 'Reverting payment status...',
                     success: 'Payment status reverted!',
@@ -383,15 +322,27 @@
                 class="inline-block space-x-2"
                 :class="[order.items.length < 2 ? '-ml-1' : '']"
               >
-                <em class="w-24 btn-pill bg-[#51bd28]/60">{{
-                  order.status === "NOT_STARTED"
-                    ? $t("order-status.not-started", "Not Started")
-                    : order.status === "IN_PROGRESS"
-                      ? $t("order-status.in-progress", "In Progress")
-                      : order.status === "COMPLETED"
-                        ? $t("order-status.completed", "Completed")
-                        : order.status
-                }}</em>
+                <em
+                  class="w-24 btn-pill"
+                  :class="[
+                    order.status === 'NOT_STARTED'
+                      ? 'bg-neutral-grey-700'
+                      : order.status === 'IN_PROGRESS'
+                        ? 'bg-[#51bd28]/60'
+                        : order.status === 'COMPLETED'
+                          ? 'bg-green-500'
+                          : '',
+                  ]"
+                  >{{
+                    order.status === "NOT_STARTED"
+                      ? $t("order-status.not-started", "Not Started")
+                      : order.status === "IN_PROGRESS"
+                        ? $t("order-status.in-progress", "In Progress")
+                        : order.status === "COMPLETED"
+                          ? $t("order-status.completed", "Completed")
+                          : order.status
+                  }}</em
+                >
                 <em class="m-0 w-18 btn-pill bg-neutral-grey-200 capitalize">{{
                   order.paymentStatus.toLocaleLowerCase()
                 }}</em>
