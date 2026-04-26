@@ -1,4 +1,6 @@
-import { nanoid, customAlphabet } from "nanoid";
+import type { TCreateOrderFormSchema } from "../../shared/utils/schemas.zod";
+
+import { customAlphabet } from "nanoid";
 import { Prisma, PrismaClient } from "@prisma/client";
 
 import { db as dbClient } from "../../server/utils/db";
@@ -26,7 +28,7 @@ export type OrderModel = Prisma.OrderGetPayload<{
   };
 }>;
 
-export type OrderedItemModel = Prisma.OrderedItemGetPayload<{
+export type OrderItemModel = Prisma.OrderItemGetPayload<{
   omit: {
     itemId: true;
     createdAt: true;
@@ -54,6 +56,7 @@ export const RepositoryFailuresMessages = {
   getOrderComments: "Failed to get order comments from database",
   getOrderLogs: "Failed to get order logs from database",
   createOrder: "Failed to create order in database",
+  updateOrder: "Failed to update order in database",
   updateOrderStatus: "Failed to update order status in database",
   updateOrderPaymentStatus: "Failed to update order payment status in database",
   deleteOrder: "Failed to delete order from database",
@@ -67,19 +70,22 @@ interface IOrderRepository {
   createOrder(
     customerId: string,
     items: ReturnType<typeof OrderTransformer.toCreateOrderParams>,
-    deliveryInfo?: ReturnType<
-      typeof OrderTransformer.toCreateOrderDeliveryInfo
-    >,
+    deliveryInfo?: TCreateOrderFormSchema["delivery"],
   ): Promise<OrderModel>;
-  // updateOrderStatus(
+  // updateOrder(
   //   orderId: string,
-  //   status: OrderModel["status"],
-  // ): Promise<void>;
+  //   data: ReturnType<typeof OrderTransformer.toOrderUpdateParams>,
+  // ): Promise<OrderModel>;
+  updateOrderStatus(
+    orderId: string,
+    status: OrderModel["status"],
+  ): Promise<void>;
   updateOrderPaymentStatus(
     orderId: string,
     status: OrderModel["paymentStatus"],
   ): Promise<void>;
   deleteOrder(orderId: string, customerId: string): Promise<void>;
+  getCustomerIdByOrderId(orderId: string): Promise<string | null>;
 }
 
 export class OrderRepository implements IOrderRepository {
@@ -180,6 +186,46 @@ export class OrderRepository implements IOrderRepository {
     }
   }
 
+  async getDeliveryDetails(orderId: string) {
+    try {
+      const result = await this.db.order.findUniqueOrThrow({
+        where: { id: orderId },
+        select: {
+          deliveryFee: true,
+          customer: {
+            select: {
+              street: true,
+              city: true,
+              state: true,
+              postalCode: true,
+            },
+          },
+        },
+      });
+
+      return {
+        fee: result.deliveryFee,
+        ...(result.customer !== null
+          ? {
+              address: {
+                street: result.customer.street,
+                city: result.customer.city,
+                province: result.customer.state,
+                postalCode: result.customer.postalCode,
+                country: "CANADA",
+              },
+            }
+          : { address: undefined }),
+      };
+    } catch (error) {
+      throw new DatabaseError("Failed to get order delivery details", {
+        operation: "getOrderDeliveryDetails",
+        orderId,
+        error,
+      });
+    }
+  }
+
   async getCountMetadata(orderId: string) {
     type OrderAggregatesRow = {
       order_id: string; // orders.id is String -> PostgreSQL text -> JS string
@@ -203,7 +249,7 @@ export class OrderRepository implements IOrderRepository {
               FROM orders AS o
               LEFT JOIN order_comments AS oc ON oc.order_id = o.id
               LEFT JOIN order_logs AS ol ON ol.order_id = o.id
-              LEFT JOIN ordered_items AS oi ON oi.order_id = o.id
+              LEFT JOIN order_items AS oi ON oi.order_id = o.id
               WHERE o.id = ${orderId}
               GROUP BY o.id
               ORDER BY o.id;`;
@@ -223,12 +269,33 @@ export class OrderRepository implements IOrderRepository {
     }
   }
 
+  async getCustomerIdByOrderId(orderId: string) {
+    try {
+      const o = await this.db.order.findUnique({
+        where: { id: orderId },
+        select: {
+          customer: {
+            select: {
+              id: true,
+            },
+          },
+        },
+      });
+
+      return o?.customer?.id || null;
+    } catch (error) {
+      throw new DatabaseError("Failed to retrieve customer from order", {
+        operation: "getCustomerIdByOrderId",
+        orderId,
+        error,
+      });
+    }
+  }
+
   async createOrder(
     customerId: string,
     items: ReturnType<typeof OrderTransformer.toCreateOrderParams>,
-    deliveryInfo?: ReturnType<
-      typeof OrderTransformer.toCreateOrderDeliveryInfo
-    >,
+    deliveryInfo?: TCreateOrderFormSchema["delivery"],
   ) {
     try {
       const customer = await this.customerRepository.getCustomer(customerId);
@@ -238,6 +305,19 @@ export class OrderRepository implements IOrderRepository {
           operation: "createOrder",
           customerId,
         });
+
+      const a = await this.db.orderDeliveryAddress.findFirst({
+        where: {
+          street: deliveryInfo?.address?.street,
+          city: deliveryInfo?.address?.city,
+          state: deliveryInfo?.address?.province,
+          postalCode: deliveryInfo?.address?.postalCode,
+          country: deliveryInfo?.address?.country,
+        },
+        select: {
+          id: true,
+        },
+      });
 
       return await this.db.order.create({
         data: {
@@ -249,9 +329,38 @@ export class OrderRepository implements IOrderRepository {
             })),
           },
           customer: {
-            connect: { id: customer.id },
+            connect: {
+              id: customer.id,
+              ...(deliveryInfo?.address?.isHomeAddress && {
+                street: deliveryInfo.address.street,
+                city: deliveryInfo.address.city,
+                state: deliveryInfo.address.province,
+                postalCode: deliveryInfo.address.postalCode,
+                country: deliveryInfo.address.country,
+              }),
+            },
           },
-          deliveryFee: deliveryInfo?.isRequested ? deliveryInfo.fee : null,
+          ...(deliveryInfo?.isRequired &&
+            deliveryInfo.address && {
+              deliveryAddress: {
+                connectOrCreate: {
+                  where: {
+                    id: a?.id || "",
+                  },
+                  create: {
+                    street: deliveryInfo.address.street,
+                    city: deliveryInfo.address.city,
+                    state: deliveryInfo.address.province,
+                    postalCode: deliveryInfo.address.postalCode,
+                    country: deliveryInfo.address.country,
+                  },
+                },
+              },
+            }),
+          ...(deliveryInfo?.isRequired &&
+            deliveryInfo.minimumFee && {
+              deliveryFee: deliveryInfo.minimumFee,
+            }),
         },
         include: {
           items: {
@@ -279,6 +388,68 @@ export class OrderRepository implements IOrderRepository {
           error,
         },
       );
+    }
+  }
+
+  // async updateOrder(
+  //   orderId: string,
+  //   data: Omit<ReturnType<typeof OrderTransformer.toOrderUpdateParams>, "id">,
+  // ) {
+  //   try {
+  //     const o = await this.db.order.findUniqueOrThrow({
+  //       where: { id: orderId },
+  //     });
+
+  //     return await this.db.order.update({
+  //       where: { id: o.id },
+  //       data: {
+  //         items: {
+  //           deleteMany: {},
+  //           createMany: {
+  //             data: data.items.map((item) => ({
+  //               itemId: item.itemId,
+  //               quantity: item.quantity,
+  //             })),
+  //           },
+  //         },
+  //         deliveryFee: data.deliveryFee,
+  //       },
+  //       include: {
+  //         items: {
+  //           include: {
+  //             item: {
+  //               select: {
+  //                 title: true,
+  //                 unitPrice: true,
+  //               },
+  //             },
+  //           },
+  //         },
+  //       },
+  //     });
+  //   } catch (error) {
+  //     throw new DatabaseError(RepositoryFailuresMessages.updateOrder, {
+  //       operation: "updateOrder",
+  //       orderId,
+  //       data,
+  //       error,
+  //     });
+  //   }
+  // }
+
+  async updateOrderStatus(orderId: string, status: OrderModel["status"]) {
+    try {
+      await this.db.order.update({
+        where: { id: orderId },
+        data: { status },
+      });
+    } catch (error) {
+      throw new DatabaseError(RepositoryFailuresMessages.updateOrderStatus, {
+        operation: "updateOrderStatus",
+        orderId,
+        status,
+        error,
+      });
     }
   }
 
