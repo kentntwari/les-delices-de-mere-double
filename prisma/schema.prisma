@@ -29,38 +29,82 @@ model User {
 }
 
 model Customer {
-  id                  String   @id @default(cuid())
+  id                  String           @id @default(cuid())
   name                String
-  email               String?  @unique
+  email               String?          @unique
   phone               String
-  whatsappPhoneNumber String?  @map("whatsapp_phone_number")
-  street              String?  @map("address_street")
-  city                String?  @map("address_city")
-  state               String?  @map("address_state")
-  postalCode          String?  @map("address_postal_code")
+  whatsappPhoneNumber String?          @map("whatsapp_phone_number")
+  homeAddress         DeliveryAddress? @relation("HomeAddressCustomers", fields: [homeAddressId], references: [id], map: "home_address_id", onDelete: SetNull, onUpdate: Cascade)
+  homeAddressId       String?          @map("home_address_id")
   orders              Order[]
-  createdAt           DateTime @default(now()) @map("created_at")
-  updatedAt           DateTime @updatedAt @map("updated_at")
+  createdAt           DateTime         @default(now()) @map("created_at")
+  updatedAt           DateTime         @updatedAt @map("updated_at")
 
   @@index([id, email, phone], name: "customer_id_email_phone_idx")
   @@map("customers")
 }
 
 model Order {
-  id            String         @id @default(cuid())
-  items         OrderedItem[]
-  status        OrderStatus    @default(NOT_STARTED) @map("status")
-  paymentStatus PaymentStatus  @default(UNPAID) @map("payment_status")
-  deliveryFee   Float?         @default(10.0) @map("delivery_fee")
-  customer      Customer?      @relation(fields: [customerId], references: [id], onDelete: Cascade, onUpdate: Cascade)
-  customerId    String?        @map("customer_id")
-  orderLogs     OrderLog[]
-  orderComments OrderComment[]
-  createdAt     DateTime       @default(now()) @map("created_at")
-  updatedAt     DateTime       @updatedAt @map("updated_at")
+  id                String                @id @default(cuid())
+  items             OrderItem[]
+  status            OrderStatus           @default(NOT_STARTED) @map("status")
+  paymentStatus     PaymentStatus         @default(UNPAID) @map("payment_status")
+  deliveryAddress   OrderDeliveryAddress? @relation("DeliveryAddressOrders", fields: [deliveryAddressId], references: [id], map: "delivery_address_id", onDelete: SetNull, onUpdate: Cascade)
+  deliveryAddressId String?               @unique @map("order_delivery_address_id")
+  deliveryFee       Float?                @default(10.0) @map("delivery_fee")
+  customer          Customer?             @relation(fields: [customerId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  customerId        String?               @map("customer_id")
+  logs              OrderLog[]
+  orderComments     OrderComment[]
+  createdAt         DateTime              @default(now()) @map("created_at")
+  updatedAt         DateTime              @updatedAt @map("updated_at")
 
   @@index([id], name: "order_id_idx")
   @@map("orders")
+}
+
+model MenuItem {
+  id          String      @id @default(cuid())
+  title       String      @db.VarChar(300)
+  slug        String      @unique
+  description String?
+  unitPrice   Float       @map("unit_price")
+  orderItems  OrderItem[]
+  createdAt   DateTime    @default(now()) @map("created_at")
+  updatedAt   DateTime    @updatedAt @map("updated_at")
+
+  @@index([id, slug], name: "menu_item_id_slug_idx")
+  @@map("menu_items")
+}
+
+model DeliveryAddress {
+  id                     String                 @id @default(cuid())
+  street                 String                 @map("street")
+  city                   String                 @map("city")
+  state                  String                 @map("state")
+  postalCode             String                 @map("postal_code")
+  country                String                 @default("CANADA") @map("country")
+  customers              Customer[]             @relation("HomeAddressCustomers")
+  orderDeliveryAddresses OrderDeliveryAddress[]
+  createdAt              DateTime               @default(now()) @map("created_at")
+  updatedAt              DateTime               @updatedAt @map("updated_at")
+
+  @@index([street, city, state, postalCode, country], name: "delivery_address_full_idx")
+  @@map("delivery_addresses")
+}
+
+model OrderItem {
+  id        String    @id @default(cuid())
+  order     Order     @relation(fields: [orderId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  orderId   String    @map("order_id")
+  item      MenuItem? @relation(fields: [itemId], references: [id], onDelete: SetNull, onUpdate: Cascade)
+  itemId    String?   @map("menu_item_id")
+  quantity  Int       @default(1)
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+
+  @@index([orderId, itemId], name: "order_item_order_item_idx")
+  @@map("order_items")
 }
 
 model OrderLog {
@@ -79,7 +123,7 @@ model OrderComment {
   comment      String   @db.VarChar(500)
   order        Order    @relation(fields: [orderId], references: [id], onDelete: Cascade, onUpdate: Cascade)
   orderId      String   @map("order_id")
-  user         User?    @relation(fields: [userId], references: [id])
+  user         User?    @relation(fields: [userId], references: [id], onDelete: SetNull, onUpdate: Cascade)
   userId       String?  @map("from_user_id")
   taggedUserId String?  @map("tagged_user_id")
   likedBy      String[] @map("liked_by")
@@ -90,32 +134,17 @@ model OrderComment {
   @@map("order_comments")
 }
 
-model OrderedItem {
-  id        String   @id @default(cuid())
-  item      MenuItem @relation(fields: [itemId], references: [id], onDelete: Cascade, onUpdate: Cascade)
-  itemId    String   @map("item_id")
-  quantity  Int      @default(1)
-  order     Order?   @relation(fields: [orderId], references: [id], onDelete: SetNull, onUpdate: Cascade)
-  orderId   String?  @map("order_id")
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
+model OrderDeliveryAddress {
+  id                String           @id @default(cuid())
+  order             Order?           @relation("DeliveryAddressOrders")
+  orderId           String?          @map("order_id")
+  deliveryAddress   DeliveryAddress? @relation(fields: [deliveryAddressId], references: [id], onDelete: SetNull, onUpdate: Cascade)
+  deliveryAddressId String?          @map("delivery_address_id")
+  createdAt         DateTime         @default(now()) @map("created_at")
+  updatedAt         DateTime         @updatedAt @map("updated_at")
 
-  @@index([id, itemId, orderId], name: "ordered_item_id_order_id_idx")
-  @@map("ordered_items")
-}
-
-model MenuItem {
-  id          String        @id @default(cuid())
-  title       String        @db.VarChar(300)
-  slug        String        @unique
-  description String?
-  unitPrice   Float         @map("unit_price")
-  orderItems  OrderedItem[]
-  createdAt   DateTime      @default(now()) @map("created_at")
-  updatedAt   DateTime      @updatedAt @map("updated_at")
-
-  @@index([id, slug], name: "menu_item_id_slug_idx")
-  @@map("menu_items")
+  @@index([id, orderId, deliveryAddressId], name: "order_delivery_address_id_order_id_delivery_address_id_idx")
+  @@map("order_delivery_addresses")
 }
 
 enum Role {
