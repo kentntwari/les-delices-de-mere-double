@@ -1,17 +1,16 @@
 <script lang="ts" setup>
   import { toast } from "vue-sonner";
   import { nanoid } from "nanoid";
+  import { storeToRefs } from "pinia";
 
   import type { TProvidedInteractionState } from "~/types";
   import type { TOrderDTO } from "~~/mvc/mapper/order";
-  import type { OrderTransformer } from "~~/mvc/transformers/order";
 
   import AppOrderCreatePanel from "~/components/app/order/CreatePanel.vue";
   import AppOrderPreviewEditPanel from "~/components/app/order/PreviewEdit.Panel.vue";
 
   import { GET_ORDERS_KEY, INJECT_FIRST_INTERACTION } from "~/app.keys";
   import { useOrderPreviewStore } from "~/stores/orderPreview";
-  import { storeToRefs } from "pinia";
 
   const orderPreviewStore = useOrderPreviewStore();
 
@@ -56,10 +55,15 @@
     validated: TOrderSchema;
   }>();
 
+  const { hasCustomers, setHasCustomers } = useAppHasCustomersCookie();
+
   const panelKey = ref(nanoid());
 
-  const commitOrderToServer = useDebounceFn(() => {
+  const commitOrderCreationToServer = useDebounceFn(() => {
     if (!emitted.value) return;
+    const isNewCustomer = emitted.value.raw.cx?.id === "NEW_CUSTOMER";
+    const hadNoCustomersBefore = !hasCustomers.value;
+
     return $fetch("/api/order", {
       method: "POST",
       headers: {
@@ -76,11 +80,39 @@
       },
       async onResponse({ response }) {
         emitted.value = undefined;
-        if (response.status === 204) panelKey.value = nanoid();
+        if (response.status === 204) {
+          panelKey.value = nanoid();
+          if (isNewCustomer && hadNoCustomersBefore) setHasCustomers(true);
+        }
         await refreshOrders();
       },
     });
   }, 500);
+
+  const commitOrderUpdateToServer = useDebounceFn(
+    (id: string, payload: Omit<TUpdateOrderFormSchema, "id">) => {
+      return $fetch(`/api/order/${id}`, {
+        method: "PUT",
+        body: { id, ...payload },
+        query: {
+          intent: "update-order",
+        } satisfies { intent: THandleOrderIntentsSchema },
+        onRequest() {
+          currentPreviewedOrder.value = {
+            ...currentPreviewedOrder.value!,
+            items: [...payload.items.current, ...payload.items.added],
+            total: payload.delivery.isRequired
+              ? currentPreviewedOrder.value!.total
+              : "0.00",
+          };
+        },
+        async onResponse({ response }) {
+          if (response.status === 204) await refreshOrders();
+        },
+      });
+    },
+    500,
+  );
 
   const commitOrderDeletionToServer = useDebounceFn((id: string) => {
     return $fetch(`/api/order/${id}`, {
@@ -149,7 +181,7 @@
       emitted.value = { raw: r, validated: v };
       addOptimisticOrder();
       await nextTick();
-      toast.promise(commitOrderToServer(), {
+      toast.promise(commitOrderCreationToServer(), {
         loading: "Creating order...",
         success: "Order created successfully!",
         error: "Failed to create order",
@@ -157,54 +189,12 @@
     },
   } satisfies InstanceType<typeof AppOrderCreatePanel>["$props"];
 
-  const { currentPreviewedOrder, previewedMetadata, paymentStatusUpdatedAt } =
+  const { currentPreviewedOrder, paymentStatusUpdatedAt } =
     storeToRefs(orderPreviewStore);
 
   watch(paymentStatusUpdatedAt, (val) => {
     if (val) refreshOrders();
   });
-
-  async function getPreviewMetadata() {
-    try {
-      const b = await $fetch<{
-        data: ReturnType<typeof OrderTransformer.toCountMetadata>;
-      }>("api/order/" + currentPreviewedOrder.value?.id + "/metadata/count", {
-        method: "GET",
-        onRequest() {
-          if (previewedMetadata.value)
-            previewedMetadata.value = {
-              ...previewedMetadata.value,
-              count: {
-                comments: "?",
-                items: "?",
-                logs: "?",
-              },
-            };
-        },
-      });
-
-      previewedMetadata.value = {
-        ...previewedMetadata.value,
-        count: {
-          comments: b.data?.comments ?? "?",
-          items: b.data?.items ?? "?",
-          logs: b.data?.logs ?? "?",
-        },
-      };
-    } catch (error) {
-      console.log("Failed to fetch preview metadata");
-      previewedMetadata.value = {
-        ...previewedMetadata.value,
-        count: {
-          comments: "?",
-          items: currentPreviewedOrder.value
-            ? currentPreviewedOrder.value.items.length.toString()
-            : "?",
-          logs: "?",
-        },
-      };
-    }
-  }
 </script>
 
 <template>
@@ -255,8 +245,6 @@
           :key="order.id"
         >
           <AppOrderPreviewEditPanel
-            :current-previewed-order="currentPreviewedOrder"
-            :preview-metadata="previewedMetadata"
             @set-order="currentPreviewedOrder = order"
             @delete-order="
               async (id) => {
@@ -269,20 +257,46 @@
                 });
               }
             "
-            @fetch-metadata="getPreviewMetadata()"
+            @update-order="
+              (payload) => {
+                return toast.promise(
+                  commitOrderUpdateToServer(payload.id, {
+                    items: payload.items,
+                    delivery: payload.delivery,
+                  }),
+                  {
+                    loading: 'Updating order...',
+                    success: 'Order updated successfully!',
+                    error: 'Failed to update order',
+                  },
+                );
+              }
+            "
+            @update-status="
+              (status) => {
+                return toast.promise(orderPreviewStore.changeStatus(status), {
+                  loading: 'Updating order status...',
+                  success: 'Order status updated!',
+                  error: 'Failed to update order status',
+                });
+              }
+            "
             @mark-as-paid="
               () => {
-                return toast.promise(orderPreviewStore.markAsPaid(), {
-                  loading: 'Marking order as paid...',
-                  success: 'Order marked as paid!',
-                  error: 'Failed to mark order as paid',
-                });
+                return toast.promise(
+                  orderPreviewStore.changePaymentStatus('PAID'),
+                  {
+                    loading: 'Marking order as paid...',
+                    success: 'Order marked as paid!',
+                    error: 'Failed to mark order as paid',
+                  },
+                );
               }
             "
             @revert-payment-status="
               (status) => {
                 return toast.promise(
-                  orderPreviewStore.revertPaymentStatus(status),
+                  orderPreviewStore.changePaymentStatus('UNPAID'),
                   {
                     loading: 'Reverting payment status...',
                     success: 'Payment status reverted!',
@@ -324,15 +338,7 @@
               >
                 <em
                   class="w-24 btn-pill"
-                  :class="[
-                    order.status === 'NOT_STARTED'
-                      ? 'bg-neutral-grey-700'
-                      : order.status === 'IN_PROGRESS'
-                        ? 'bg-[#51bd28]/60'
-                        : order.status === 'COMPLETED'
-                          ? 'bg-green-500'
-                          : '',
-                  ]"
+                  :class="[resolveOrderStatusClass(order.status)]"
                   >{{
                     order.status === "NOT_STARTED"
                       ? $t("order-status.not-started", "Not Started")
