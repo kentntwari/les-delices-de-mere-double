@@ -1,36 +1,48 @@
 <script lang="ts" setup>
   import type { TOrderDTO } from "~~/mvc/mapper/order";
+
   import { VisuallyHidden } from "reka-ui";
-  import { EllipsisVerticalIcon, InfoIcon } from "lucide-vue-next";
+  import { nanoid } from "nanoid";
+  import { storeToRefs } from "pinia";
+  import {
+    XIcon,
+    EllipsisVerticalIcon,
+    InfoIcon,
+    PhoneIcon,
+    MailIcon,
+    Trash2Icon,
+    TriangleAlertIcon,
+    PlusIcon,
+    MinusIcon,
+  } from "lucide-vue-next";
 
-  const props = defineProps<{
-    currentPreviewedOrder: Omit<TOrderDTO, "status"> | null;
-    previewMetadata?: {
-      count: { items: string; comments: string; logs: string };
-    };
-  }>();
+  import { useOrderPreviewStore } from "~/stores/orderPreview";
+  import { CustomerEntity } from "~~/mvc/entities/customer";
+  import {
+    updateOrderFormSchema,
+    type TUpdateOrderFormSchema,
+  } from "~~/shared/utils/schemas.zod";
+  import { GET_MENU_ITEMS_KEY } from "~/app.keys";
 
-  const currentPreviewdOrderTotal = computed(() => {
-    if (!props.currentPreviewedOrder) return "0.00";
-    const itemsTotal = props.currentPreviewedOrder.items.reduce(
-      (acc, item) => acc + item.quantity * item.unitPrice,
-      0,
-    );
+  const { data: menuItems } = useNuxtData<{ data: TMenuSchema }>(
+    GET_MENU_ITEMS_KEY,
+  );
 
-    if (parseFloat(props.currentPreviewedOrder.total) === itemsTotal)
-      return "$" + props.currentPreviewedOrder.total;
+  const store = useOrderPreviewStore();
 
-    const deliveryFee =
-      parseFloat(props.currentPreviewedOrder.total) - itemsTotal;
-
-    return `$${itemsTotal.toFixed(2)} + $${deliveryFee.toFixed(2)} (Delivery fee) = $${props.currentPreviewedOrder.total}`;
-  });
+  const {
+    currentPreviewedOrder,
+    previewedMetadata,
+    previewedItemsTotal,
+    paymentStatusUpdatedAt,
+    statusUpdatedAt,
+  } = storeToRefs(store);
 
   const emits = defineEmits<{
     (e: "set-order"): void;
-    (e: "delete-order", id?: string): void;
-    (e: "fetch-metadata"): void;
-    (e: "refresh-orders"): void;
+    (e: "delete-order", id: string): void;
+    (e: "update-order", payload: TUpdateOrderFormSchema): void;
+    (e: "update-status", status: TOrderDTO["status"]): void;
     (e: "mark-as-paid"): void;
     (e: "revert-payment-status", status: TOrderDTO["paymentStatus"]): void;
   }>();
@@ -38,32 +50,147 @@
   const orderActions = {
     isPreviewOpen: ref(false),
     isEditing: ref(false),
-    previewedTab: ref<"items" | "comments" | "logs">("items"),
+    isCancelling: ref(false),
+    isViewingCustomer: ref(false),
     openPreview: () => (orderActions.isPreviewOpen.value = true),
     openEditor: () => (orderActions.isEditing.value = true),
+    openCustomerInfo: () => (orderActions.isViewingCustomer.value = true),
+    startCancelling: () => (orderActions.isCancelling.value = true),
     closePreview: () => (orderActions.isPreviewOpen.value = false),
     closeEditor: () => (orderActions.isEditing.value = false),
+    stopCancelling: () => (orderActions.isCancelling.value = false),
+    closeCustomerInfo: () => (orderActions.isViewingCustomer.value = false),
+    setDefaults: () => {
+      setValues({
+        ...values,
+        id: currentPreviewedOrder.value?.id,
+        items: {
+          ...values.items,
+          current: currentPreviewedOrder.value?.items,
+        },
+        delivery: {
+          isRequired: previewedMetadata.value?.delivery.isRequested,
+          address:
+            previewedMetadata.value?.delivery.isRequested &&
+            previewedMetadata.value.delivery.address
+              ? previewedMetadata.value.delivery.address
+              : null,
+        },
+      });
+    },
+    startEditing: () => {
+      setValues({ ...values, id: currentPreviewedOrder.value?.id });
+      orderActions.openEditor();
+    },
+    cancelEditing: () => {
+      orderActions.stopCancelling();
+      orderActions.closeEditor();
+      resetEditForm();
+    },
     previewOrder: async () => {
       emits("set-order");
       await nextTick();
-      emits("fetch-metadata");
+      previewedTab.value = "items";
+      await nextTick();
+      store.getPreviewMetadata();
       orderActions.openPreview();
     },
+    updateOrder: (payload: TUpdateOrderFormSchema) => {
+      emits("update-order", payload);
+      orderActions.closeEditor();
+    },
+    updateStatus: (status: TOrderDTO["status"]) => {
+      emits("update-status", status);
+    },
     markAsPaid: async () => {
-      if (!props.currentPreviewedOrder) return;
-      try {
-        emits("mark-as-paid");
-        await nextTick();
-      } finally {
-        if (orderActions.previewedTab.value === "logs") logs.execute(500);
-      }
+      emits("mark-as-paid");
+    },
+    revertPaymentStatus: (status: TOrderDTO["paymentStatus"]) => {
+      emits("revert-payment-status", status);
+      alertPreviewKey.value = nanoid();
     },
   };
 
-  const logs = useOrderLogs(
-    computed(() => props.currentPreviewedOrder?.id),
-    orderActions.previewedTab,
+  const previewedTab = ref<"items" | "comments" | "logs">("items");
+
+  const alertPreviewKey = ref(nanoid());
+  const popoverEditorKey = ref(nanoid());
+
+  const logs = useAppOrderLogs(
+    computed(() => currentPreviewedOrder.value?.id),
+    previewedTab,
   );
+
+  const customer = useAsyncState(store.fetchRelatedCustomer, null, {
+    immediate: false,
+  });
+
+  watch(
+    [paymentStatusUpdatedAt, statusUpdatedAt],
+    ([paymentVal, statusVal]) => {
+      if ((paymentVal || statusVal) && orderActions.isPreviewOpen.value)
+        logs.execute(500);
+    },
+  );
+
+  /* =============================================================== */
+  /* ============================ EDIT ORDER FORM ======================= */
+  /* =============================================================== */
+  const {
+    values,
+    meta,
+    setValues,
+    resetForm: resetEditForm,
+    handleSubmit,
+  } = useForm({
+    name: "edit-order-form_" + nanoid(),
+    validationSchema: toTypedSchema(updateOrderFormSchema),
+    initialValues: {
+      items: {
+        current: [],
+        removed: [],
+        added: [],
+      },
+    },
+  });
+
+  const totalItemsCount = computed(() => {
+    const originalCount = currentPreviewedOrder.value?.items.length || 0;
+    if (!values.items) return originalCount;
+
+    const removedCount = values.items?.removed?.length || 0;
+    const addedCount = values.items?.added?.length || 0;
+
+    return originalCount - removedCount + addedCount;
+  });
+
+  const isRemoved = computed(() => {
+    if (!values.items) return (id: string) => false;
+
+    return (id: string) => values.items?.removed?.includes(id);
+  });
+
+  const shouldDisableSaveEditsBtn = computed(() => {
+    if (meta.value.valid === false) return true;
+
+    if (!values.items) return true;
+
+    if (values.items.added!.length === 0 && values.items.removed!.length === 0)
+      return true;
+
+    if (
+      values.items.added!.length === 0 &&
+      values.items.removed!.length > 0 &&
+      values.items.current!.length === 0
+    )
+      return true;
+  });
+
+  const onSubmit = handleSubmit(async (v) => {
+    orderActions.updateOrder(v);
+    await nextTick();
+    resetEditForm();
+  });
 </script>
 
 <template>
@@ -72,15 +199,23 @@
     :key="'preview-dialog'"
   >
     <button
-      :aria-label="`View order ${props.currentPreviewedOrder?.id}`"
+      :aria-label="`View order ${currentPreviewedOrder?.id || ''}`"
       class="w-full h-full p-4 flex items-center justify-between cursor-pointer"
-      @click="orderActions.previewOrder()"
+      @click="
+        () => {
+          orderActions.previewOrder();
+          orderActions.setDefaults();
+        }
+      "
     >
       <slot />
     </button>
 
+    <!-- -------------------------------------------------------- -->
+    <!-- ------------------ EDITOR PANEL ----------------------- -->
+    <!-- -------------------------------------------------------- -->
+
     <UIDialogContent
-      :key="'test'"
       v-if="orderActions.isEditing.value"
       :show-overlay="false"
       @interact-outside="(e) => e.preventDefault()"
@@ -91,23 +226,255 @@
         <UIDialogTitle
           >{{ $t("components.order.editor-panel.title") }}
           <span class="text-neutral-grey-900"
-            >#{{ props.currentPreviewedOrder?.id }}</span
+            >#{{ currentPreviewedOrder?.id }}</span
           >
         </UIDialogTitle>
+        <div class="flex items-center gap-x-2">
+          <UIButton
+            :variant="'outline'"
+            @click="orderActions.startCancelling()"
+            class="size-7 rounded-[6px] border hover:border-2 border-neutral-grey-700 hover:border-neutral-grey-900 cursor-pointer"
+          >
+            <XIcon :stroke-width="1" />
+          </UIButton>
+        </div>
       </UIDialogHeader>
-      <section>hello there</section>
+      <section class="p-6 grid grid-rows-[1fr_auto] gap-y-6">
+        <header>
+          <div class="flex items-center justify-between">
+            <p aria-roledescription="total-ticker-count">
+              {{
+                $t("components.order.editor-panel.ticker.total-items", {
+                  count: totalItemsCount,
+                })
+              }}
+            </p>
+            <p class="space-x-6">
+              <span class="inline-block text-red-500">{{
+                $t("components.order.editor-panel.ticker.removed-items", {
+                  count: values.items?.removed?.length || 0,
+                })
+              }}</span>
+              <span class="inline-block text-green-500">{{
+                $t("components.order.editor-panel.ticker.added-items", {
+                  count: values.items?.added?.length || 0,
+                })
+              }}</span>
+            </p>
+          </div>
+          <ul class="mt-6 space-y-2">
+            <li
+              v-for="(item, index) in currentPreviewedOrder?.items"
+              :key="item.id"
+              class="flex items-center"
+              :class="[
+                isRemoved(item.id) &&
+                  '*:first:block relative opacity-50 before:absolute before:w-full before:h-px before:bg-neutral-grey-900 pointer-events-none',
+              ]"
+            >
+              <AppOrderPreviewEditPill :type="'preview'" :current-item="item" />
+
+              <button
+                class="cursor-pointer"
+                @click="
+                  values.items &&
+                  setValues({
+                    ...values,
+                    items: {
+                      ...values.items,
+                      current: values.items.current?.filter(
+                        (_, i) => i !== index,
+                      ),
+                      removed: [...values.items.removed!, item.id],
+                    },
+                  })
+                "
+                values.items.removed
+                &&
+                v-if="!isRemoved(item.id)"
+              >
+                <Trash2Icon
+                  :size="24"
+                  class="text-red-900 hover:text-red-700 transition-colors"
+                />
+              </button>
+            </li>
+            <li
+              v-for="(addedItem, index) in values.items?.added || []"
+              :key="addedItem.id"
+            >
+              <AppOrderPreviewEditPill
+                :type="'edit'"
+                :current-item="addedItem"
+                :menu-items="menuItems?.data.items || []"
+                class="*:first:bg-accent-one-500 *:data-[slot=select-trigger]:bg-neutral-grey-100 rounded-sm"
+                @update-quantity="
+                  (q) =>
+                    setValues({
+                      ...values,
+                      items: {
+                        ...values.items,
+                        added: values.items?.added?.map((item, i) =>
+                          i === index ? { ...item, quantity: q } : item,
+                        ),
+                      },
+                    })
+                "
+                @select-item="
+                  (item: TMenuSchema['items'][number]) =>
+                    setValues({
+                      ...values,
+                      items: {
+                        ...values.items,
+                        added: values.items?.added?.map((added, i) =>
+                          i === index
+                            ? {
+                                ...added,
+                                id: item.id,
+                                title: item.title,
+                                unitPrice: item.unitPrice,
+                              }
+                            : added,
+                        ),
+                      },
+                    })
+                "
+              >
+                <template #delete>
+                  <button
+                    class="cursor-pointer"
+                    @click="
+                      setValues({
+                        ...values,
+                        items: {
+                          ...values.items,
+                          added: values.items?.added?.filter(
+                            (_, i) => i !== index,
+                          ),
+                        },
+                      })
+                    "
+                  >
+                    <MinusIcon
+                      :size="24"
+                      class="text-red-900 hover:text-red-700 transition-colors"
+                    />
+                  </button>
+                </template>
+              </AppOrderPreviewEditPill>
+            </li>
+            <li v-if="totalItemsCount < 7">
+              <button
+                type="button"
+                class="w-full lg:h-12 flex items-center justify-center gap-x-1 outline-2 outline-dashed outline-neutral-grey-700 hover:outline-neutral-grey-800 transition-colors duration-150 uppercase text-sm rounded-md cursor-pointer"
+                @click="
+                  setValues({
+                    ...values,
+                    items: {
+                      ...values.items,
+                      added: [
+                        ...(values.items?.added || []),
+                        {
+                          id: nanoid(),
+                          title: '',
+                          quantity: 1,
+                          unitPrice: 0,
+                        },
+                      ],
+                    },
+                  })
+                "
+              >
+                <span class="block">
+                  <PlusIcon :size="16" />
+                </span>
+                <span class="block">
+                  {{
+                    $t(
+                      "components.order.create-panel.items-list.button-add-items",
+                    )
+                  }}
+                </span>
+              </button>
+            </li>
+
+            <li
+              v-show="totalItemsCount === 7"
+              class="w-full mt-2 font-regular text-sm text-orange-700 flex items-center gap-x-1"
+            >
+              <span class="inline-block"><TriangleAlertIcon :size="16" /></span>
+              <span class="inline-block"
+                >You can only add up to 7 items per order</span
+              >
+            </li>
+          </ul>
+        </header>
+        <footer>
+          <div>
+            <p
+              class="w-full mt-2 font-regular text-sm text-neutral-grey-900 flex items-center gap-x-1"
+            >
+              <span class="inline-block"><InfoIcon :size="16" /></span>
+              <span class="inline-block">{{
+                $t("components.order.editor-panel.info.notice-2")
+              }}</span>
+            </p>
+            <p
+              class="w-full mt-2 font-regular text-sm text-neutral-grey-900 flex items-center gap-x-1"
+            >
+              <span class="inline-block"><InfoIcon :size="16" /></span>
+              <span class="inline-block">{{
+                $t("components.order.editor-panel.info.notice-1")
+              }}</span>
+            </p>
+          </div>
+        </footer>
+      </section>
       <UIDialogFooter class="space-x-2">
-        <UIButton :variant="'outline'" @click="orderActions.closeEditor()">{{
-          $t("components.order.editor-panel.buttons.cancel")
-        }}</UIButton>
-        <UIButton :variant="'primary'">{{
-          $t("components.order.editor-panel.buttons.save-changes")
-        }}</UIButton>
+        <UIAlertDialog v-model:open="orderActions.isCancelling.value">
+          <UIAlertDialogTrigger as-child>
+            <UIButton :variant="'outline'">{{
+              $t("components.order.editor-panel.buttons.cancel")
+            }}</UIButton>
+          </UIAlertDialogTrigger>
+          <UIAlertDialogContent>
+            <UIAlertDialogTitle class="text-primary-1300">{{
+              $t("components.alerts.generic.title")
+            }}</UIAlertDialogTitle>
+            <UIAlertDialogDescription>{{
+              $t("components.alerts.order.cancel-editing.description")
+            }}</UIAlertDialogDescription>
+            <UIAlertDialogFooter class="mt-4 space-x-2">
+              <UIAlertDialogCancel as-child>
+                <UIButton :variant="'outline'">{{
+                  $t("components.alerts.generic.cancel-button")
+                }}</UIButton>
+              </UIAlertDialogCancel>
+              <UIButton
+                :variant="'primary'"
+                @click="orderActions.cancelEditing()"
+                >{{ $t("components.alerts.generic.confirm-button") }}
+              </UIButton>
+            </UIAlertDialogFooter>
+          </UIAlertDialogContent>
+        </UIAlertDialog>
+
+        <UIButton
+          :variant="'primary'"
+          :disabled="shouldDisableSaveEditsBtn"
+          @click="onSubmit"
+          >{{
+            $t("components.order.editor-panel.buttons.save-changes")
+          }}</UIButton
+        >
       </UIDialogFooter>
     </UIDialogContent>
 
+    <!-- -------------------------------------------------------- -->
+    <!-- ------------------ PREVIEW PANEL ----------------------- -->
+    <!-- -------------------------------------------------------- -->
+
     <UIDialogContent
-      :key="'fff'"
       @interact-outside="(e) => e.preventDefault()"
       @escape-key-down="(e) => e.preventDefault()"
       :class="[orderActions.isEditing.value ? 'opacity-50' : 'opacity-100']"
@@ -115,12 +482,20 @@
       <UIDialogHeader>
         <UIDialogTitle
           >{{ $t("components.order.preview-panel.title") }}
-          <span class="text-neutral-grey-900"
-            >#{{ props.currentPreviewedOrder?.id }}</span
-          >
+          <div class="inline-flex items-center gap-x-4">
+            <span class="text-neutral-grey-900"
+              >#{{ currentPreviewedOrder?.id }}</span
+            >
+
+            <LazyAppOrderPreviewEditSwitchStatus
+              v-if="currentPreviewedOrder"
+              :current-status="currentPreviewedOrder?.status"
+              @update="(status) => orderActions.updateStatus(status)"
+            />
+          </div>
         </UIDialogTitle>
         <div class="flex items-center gap-x-2">
-          <UIPopover>
+          <UIPopover :key="popoverEditorKey">
             <UIPopoverTrigger>
               <EllipsisVerticalIcon
                 :size="32"
@@ -135,7 +510,24 @@
               <ul
                 class="p-0 *:px-6 *:py-2 *:h-10 *:bg-neutral-grey-200 *:hover:bg-neutral-grey-300 *:text-base *:text-neutral-grey-1300 *:cursor-pointer"
               >
-                <li @click="orderActions.openEditor()">
+                <li
+                  v-show="
+                    currentPreviewedOrder?.paymentStatus !== 'PAID' ||
+                    currentPreviewedOrder?.status !== 'COMPLETED'
+                  "
+                  @click="
+                    () => {
+                      if (
+                        currentPreviewedOrder?.paymentStatus === 'PAID' ||
+                        currentPreviewedOrder?.status === 'COMPLETED'
+                      )
+                        return void null;
+
+                      orderActions.startEditing();
+                      popoverEditorKey = nanoid();
+                    }
+                  "
+                >
                   <button>Edit</button>
                 </li>
                 <li>
@@ -164,7 +556,9 @@
                       </UIAlertDialogCancel>
                       <UIButton
                         :variant="'primary'"
-                        @click="$emit('delete-order')"
+                        @click="
+                          emits('delete-order', currentPreviewedOrder?.id || '')
+                        "
                         >{{
                           $t("components.alerts.generic.confirm-button")
                         }}</UIButton
@@ -185,27 +579,25 @@
       </VisuallyHidden>
 
       <section class="p-6 space-y-6">
-        <UITabs v-model="orderActions.previewedTab.value">
+        <UITabs v-model="previewedTab" :key="currentPreviewedOrder?.id">
           <UITabsList>
             <UITabsTrigger :value="'items'"
               >Items ({{
-                props.previewMetadata?.count.items || "?"
+                previewedMetadata?.count?.items || "?"
               }})</UITabsTrigger
             >
             <UITabsTrigger :value="'comments'"
               >Comments ({{
-                props.previewMetadata?.count.comments || "?"
+                previewedMetadata?.count?.comments || "?"
               }})</UITabsTrigger
             >
             <UITabsTrigger :value="'logs'"
-              >Logs ({{
-                props.previewMetadata?.count.logs || "?"
-              }})</UITabsTrigger
+              >Logs ({{ previewedMetadata?.count?.logs || "?" }})</UITabsTrigger
             >
           </UITabsList>
           <UITabsContent :value="'items'">
             <AppOrderPreviewEditPill
-              v-for="(item, idx) in props.currentPreviewedOrder?.items || []"
+              v-for="(item, idx) in currentPreviewedOrder?.items || []"
               :key="item.id"
               :index="idx"
               :type="'preview'"
@@ -217,8 +609,13 @@
                 class="w-full flex items-start justify-between font-semibold text-secondary-1300"
               >
                 <span class="block text-base">Total</span>
-                <span class="block max-w-[197px] text-right">
-                  {{ currentPreviewdOrderTotal }}
+                <span class="block max-w-80 text-right">
+                  ${{ previewedItemsTotal }} + ${{
+                    previewedMetadata?.delivery.fee || "0.00"
+                  }}
+                  (delivery fee)=<br />${{
+                    currentPreviewedOrder?.total || "0.00"
+                  }}
                 </span>
               </div>
             </div>
@@ -233,27 +630,112 @@
 
       <p
         class="px-6 pb-6 inline-flex items-center gap-x-2"
-        v-show="props.currentPreviewedOrder?.paymentStatus === 'PAID'"
+        v-show="currentPreviewedOrder?.paymentStatus === 'PAID'"
       >
         <InfoIcon class="text-neutral-grey-1000" :size="22" />
-        <span class="text-neutral-grey-1000">Order has been marked paid.</span
-        ><button
-          class="inline underline font-bold text-neutral-grey-1000 cursor-pointer"
-          @click="$emit('revert-payment-status', 'UNPAID')"
-        >
-          Revert?
-        </button>
+        <span class="text-neutral-grey-1000">Order has been marked paid.</span>
+
+        <UIAlertDialog :key="alertPreviewKey">
+          <UIAlertDialogTrigger as-child>
+            <button
+              class="inline underline font-bold text-neutral-grey-1000 cursor-pointer"
+            >
+              Revert?
+            </button>
+          </UIAlertDialogTrigger>
+          <UIAlertDialogContent>
+            <UIAlertDialogTitle class="text-primary-1300">{{
+              $t("components.alerts.generic.title")
+            }}</UIAlertDialogTitle>
+            <UIAlertDialogDescription>{{
+              $t("components.alerts.order.revert-payment-status.description")
+            }}</UIAlertDialogDescription>
+            <UIAlertDialogFooter class="mt-4 space-x-2">
+              <UIAlertDialogCancel as-child>
+                <UIButton :variant="'outline'">{{
+                  $t("components.alerts.generic.cancel-button")
+                }}</UIButton>
+              </UIAlertDialogCancel>
+              <UIButton
+                :variant="'primary'"
+                @click="orderActions.revertPaymentStatus('UNPAID')"
+                >{{ $t("components.alerts.generic.confirm-button") }}</UIButton
+              >
+            </UIAlertDialogFooter>
+          </UIAlertDialogContent>
+        </UIAlertDialog>
       </p>
 
       <UIDialogFooter class="space-x-2">
-        <UIButton :variant="'outline'">View customer info</UIButton>
+        <UIPopover v-model:open="orderActions.isViewingCustomer.value">
+          <UIPopoverAnchor>
+            <UIButton
+              :variant="'outline'"
+              @click="
+                () => {
+                  customer.executeImmediate();
+                  orderActions.openCustomerInfo();
+                }
+              "
+              >View customer info</UIButton
+            >
+          </UIPopoverAnchor>
+
+          <UIPopoverContent
+            :align="'end'"
+            :side-offset="10"
+            class="min-h-[120px] min-w-[316px]"
+          >
+            <AppSkeletonTwoLines v-if="customer.isLoading.value" />
+            <div
+              v-else-if="!customer.state.value?.data"
+              class="mt-2 flex flex-col items-center justify-center gap-2 text-neutral-grey-1000"
+            >
+              <TriangleAlertIcon class="text-red-700" :size="22" />
+              <p class="text-sm">Unable to load customer information</p>
+            </div>
+            <template v-else>
+              <span class="font-medium text-lg text-primary-1300">{{
+                customer.state.value?.data?.fullName
+              }}</span>
+
+              <a
+                :href="
+                  'tel:' +
+                  CustomerEntity.parsePhone(
+                    customer.state.value?.data?.phone || '',
+                  )
+                "
+                class="mt-4 flex items-center text-neutral-grey-1000 hover:text-primary-500"
+              >
+                <PhoneIcon class="mr-2" :size="18" />
+
+                {{
+                  customer.state.value?.data?.phone
+                    ? CustomerEntity.parsePhone(
+                        customer.state.value?.data?.phone,
+                      )
+                    : "-"
+                }}
+              </a>
+
+              <a
+                :href="'mailto:' + (customer.state.value?.data?.email || '')"
+                class="mt-3 flex items-center text-neutral-grey-1000 hover:text-primary-500"
+              >
+                <MailIcon class="mr-2" :size="18" />
+                {{ customer.state.value?.data?.email || "-" }}
+              </a>
+            </template>
+          </UIPopoverContent>
+        </UIPopover>
 
         <UIButton
           :variant="'primary'"
-          v-show="props.currentPreviewedOrder?.paymentStatus !== 'PAID'"
-          :disabled="props.currentPreviewedOrder?.paymentStatus === 'PAID'"
+          v-show="currentPreviewedOrder?.paymentStatus !== 'PAID'"
+          :disabled="currentPreviewedOrder?.paymentStatus === 'PAID'"
           @click="
-            props.currentPreviewedOrder?.paymentStatus !== 'PAID'
+            currentPreviewedOrder?.paymentStatus !== 'PAID'
               ? orderActions.markAsPaid()
               : void null
           "
