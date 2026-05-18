@@ -37,11 +37,20 @@
   const { data: customerResults } = useNuxtData<{ data: TCustomerSchema[] }>(
     GET_CUSTOMERS_KEY,
   );
-  const hasCustomers = computed(() => {
+
+  const { hasCustomers: hasCustomersFromCookie, setHasCustomers } =
+    useAppHasCustomersCookie();
+
+  const hasCustomersInCache = computed(() => {
     if (!customerResults.value) return false;
     if (!customerResults.value.data) return false;
     if (customerResults.value.data.length === 0) return false;
     return true;
+  });
+
+  const hasCustomers = computed(() => {
+    if (hasCustomersInCache.value) return true;
+    return hasCustomersFromCookie.value;
   });
 
   const userStatus = useState<IUserMeta["status"]>(READ_ONLY_USER_STATUS);
@@ -117,15 +126,16 @@
     },
   } as const);
 
-  watch(
-    [() => currentStep.value, () => hasCustomers.value],
-    ([step, hasCustomers]) => {
-      if (step.title === steps.value["customer-details"].title && !hasCustomers)
-        $fetch<{ data: TCustomerSchema[] }>("/api/customers").then((r) => {
-          customerResults.value = r;
-        });
-    },
-  );
+  watch([() => currentStep.value, () => hasCustomers.value], ([step]) => {
+    const isCustomerStep = step.title === steps.value["customer-details"].title;
+    if (!isCustomerStep) return;
+
+    if (!hasCustomersInCache.value)
+      $fetch<{ data: TCustomerSchema[] }>("/api/customers").then((r) => {
+        customerResults.value = r;
+        setHasCustomers(!!r.data?.length);
+      });
+  });
 
   const shouldDisableSubmitButton = computed(() => {
     if (isSubmitting.value) return true;
@@ -173,7 +183,7 @@
       if (alertActions.isItems.value)
         return useI18n().t("components.alerts.order.delete-items.description");
       if (alertActions.isRestart.value)
-        return useI18n().t("components.alerts.order.restart");
+        return useI18n().t("components.alerts.order.restart.description");
     }),
     openAlert: () => {
       alertActions.isAlertOpen.value = true;
@@ -283,9 +293,9 @@
             ...values.delivery,
             isRequired: true,
             address: {
-              street: "",
-              city: "",
-              postalCode: "",
+              street: values.delivery?.address?.street,
+              city: values.delivery?.address?.city,
+              postalCode: values.delivery?.address?.postalCode,
               province: "Quebec",
               country: "Canada",
             },
