@@ -19,3 +19,4 @@ export const READ_ONLY_USER_STATUS = "__READ_ONLY__USER_STATUS";
 
 /* COOKIES KEYS*/
 export const FIRST_INTERACTION_COOKIE = "__client_first__app__interaction";
+export const HAS_CUSTOMERS_COOKIE = "__client_has_customers";
