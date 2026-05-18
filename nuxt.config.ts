@@ -39,7 +39,10 @@ export default defineNuxtConfig({
     "/api/items/**": {
       cache: { name: "items", maxAge: 60 * 60 * 24, swr: true },
     },
-    "/api/orders": { cache: { name: "orders", maxAge: 20 * 60, swr:true } },
+    "/api/orders": { cache: { name: "orders", maxAge: 20 * 60, swr: true } },
+    "/api/customers": {
+      cache: { name: "customers", maxAge: 60 * 60 * 24, swr: true },
+    },
   },
   modules: [
     "@pinia/nuxt",
@@ -54,6 +57,9 @@ export default defineNuxtConfig({
   ],
   vite: {
     plugins: [tailwindcss()],
+    server: {
+      allowedHosts: [".trycloudflare.com"],
+    },
   },
   icon: {
     mode: "css",
