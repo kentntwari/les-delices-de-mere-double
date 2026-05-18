@@ -15,7 +15,10 @@
       "path": "./.nuxt/tsconfig.node.json"
     }
   ],
-  "compilerOptions": { "moduleResolution": "node" },
+  "compilerOptions": {
+    "moduleResolution": "node",
+    "ignoreDeprecations": "6.0"
+  },
   "include": ["src/**/*"], // ONLY your source
   "exclude": ["node_modules", "dist", "build", "**/*.spec.ts", "coverage"],
   "disableSizeLimit": true
