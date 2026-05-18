@@ -18,6 +18,7 @@
 
   // WARNING: Must never be accessed
   const userStatus = useState<IUserMeta["status"]>(READ_ONLY_USER_STATUS);
+  
   await callOnce(async () => {
     // FIX: Must throw if api shape response is not what we expect
     if (isSignedIn.value) {

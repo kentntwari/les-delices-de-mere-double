@@ -12,22 +12,19 @@ export default defineEventHandler(async (event) => {
         event.path,
         event.method,
         await readBody(event),
-        "POST REQUEST RECEIVED: Handling Clerk webhook event"
+        "POST REQUEST RECEIVED: Handling Clerk webhook event",
       );
-
       const response = await new WebhookClerkController(
-        toWebRequest(event)
+        toWebRequest(event),
       ).handleEvent();
-
       return treatResponses(event, response, "/api/webhook.clerk.ts");
     } else {
       log.error(
         event.path,
         event.method,
         null,
-        "[METHOD NOT ALLOWED]: Only POST requests are allowed"
+        "[METHOD NOT ALLOWED]: Only POST requests are allowed",
       );
-
       throw createError({
         statusCode: 405,
         statusMessage: errorMap.sys.api.METHOD_NOT_ALLOWED,

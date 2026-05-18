@@ -27,7 +27,17 @@ export class CustomerService extends BaseService {
     }
   }
 
-  async createCustomer(data: unknown) {
+  async read(id: string) {
+    try {
+      const c = await this.repository.getCustomer(id);
+      return c ? this.mapper.toEntity(c) : null;
+    } catch (error) {
+      this.defaultMapError(error, "service.customer.read");
+      throw error;
+    }
+  }
+
+  async create(data: unknown) {
     try {
       const validated = this.factory.validate(data);
       const customer = await this.repository.createCustomer(
@@ -35,19 +45,19 @@ export class CustomerService extends BaseService {
       );
       return this.mapper.toEntity(customer);
     } catch (error) {
-      this.defaultMapError(error, "service.customer.createCustomer");
+      this.defaultMapError(error, "service.customer.create");
       throw error;
     }
   }
 
-  async getOrCreateCustomer(cx: Partial<TCustomerDTO>) {
+  async readOrCreateCustomer(cx: Partial<TCustomerDTO>) {
     try {
       const isExistingCustomer =
         cx.id && cx.id.trim() !== "" && cx.id !== "NEW_CUSTOMER";
 
       const res = isExistingCustomer
         ? await this.repository.getCustomer(cx.id!)
-        : await this.createCustomer(cx);
+        : await this.create(cx);
 
       return res instanceof CustomerEntity
         ? res
@@ -55,7 +65,7 @@ export class CustomerService extends BaseService {
           ? null
           : this.mapper.toEntity(res);
     } catch (error) {
-      this.defaultMapError(error, "service.customer.getOrCreateCustomer");
+      this.defaultMapError(error, "service.customer.readOrCreateCustomer");
       throw error;
     }
   }

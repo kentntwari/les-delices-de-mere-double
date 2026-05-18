@@ -3,7 +3,6 @@
 
   defineProps<{
     type: "preview" | "edit";
-    index: number;
     menuItems?: TMenuSchema["items"];
     currentItem: {
       title: string;
@@ -15,6 +14,7 @@
   const emits = defineEmits<{
     (e: "select-item", v: TMenuSchema["items"][number]): void;
     (e: "remove-item"): void;
+    (e: "update-quantity", v: number): void;
   }>();
 </script>
 
@@ -29,60 +29,48 @@
       "
     >
       <template v-if="type === 'edit'">
-        <Field
-          :name="`items[${index}].quantity`"
-          v-slot="{ field: f, handleChange }"
-          :keep-value="true"
-        >
-          <UISelect :default-value="f.value" v-model="f.value">
-            <UISelectTrigger
-              class="bg-neutral-grey-100 border-neutral-grey-600 data-[size=default]:h-8"
+        <UISelect :default-value="currentItem.quantity">
+          <UISelectTrigger
+            class="bg-neutral-grey-100 border-neutral-grey-600 data-[size=default]:h-8"
+          >
+            <UISelectValue class="text-secondary-1300" />
+          </UISelectTrigger>
+          <UISelectContent>
+            <UISelectItem
+              v-for="n in 10"
+              :key="n"
+              :value="n"
+              @select="emits('update-quantity', n)"
             >
-              <UISelectValue class="text-secondary-1300" />
-            </UISelectTrigger>
-            <UISelectContent>
-              <UISelectItem
-                v-for="n in 10"
-                :key="n"
-                :value="n"
-                @select="(e: Event) => handleChange(n)"
-              >
-                {{ n }}
-              </UISelectItem>
-            </UISelectContent>
-          </UISelect>
-        </Field>
+              {{ n }}
+            </UISelectItem>
+          </UISelectContent>
+        </UISelect>
 
         <span class="block">
           <X :size="20" class="text-secondary-1300" />
         </span>
 
-        <Field
-          :name="`items[${index}].title`"
-          :keep-value="true"
-          v-slot="{ field: f }"
-        >
-          <UISelect :default-value="f.value" v-model="f.value">
-            <UISelectTrigger
-              class="bg-neutral-grey-100 border-neutral-grey-600 data-[size=default]:h-8 min-w-32"
+        <UISelect :default-value="currentItem.title">
+          <UISelectTrigger
+            class="bg-neutral-grey-100 border-neutral-grey-600 data-[size=default]:h-8 min-w-32"
+          >
+            <UISelectValue
+              class="text-secondary-1300"
+              :placeholder="'Select item...'"
+            />
+          </UISelectTrigger>
+          <UISelectContent>
+            <UISelectItem
+              v-for="n in menuItems"
+              :key="n.id"
+              :value="n.title"
+              @select="emits('select-item', n)"
             >
-              <UISelectValue
-                class="text-secondary-1300"
-                :placeholder="'Select item...'"
-              />
-            </UISelectTrigger>
-            <UISelectContent>
-              <UISelectItem
-                v-for="n in menuItems"
-                :key="n.id"
-                :value="n.title"
-                @select="emits('select-item', n)"
-              >
-                {{ n.title }}
-              </UISelectItem>
-            </UISelectContent>
-          </UISelect>
-        </Field>
+              {{ n.title }}
+            </UISelectItem>
+          </UISelectContent>
+        </UISelect>
 
         <span class="flex-1 text-right text-secondary-1300">
           {{ currentItem.quantity }}*${{ currentItem.unitPrice }} = ${{
@@ -101,17 +89,18 @@
         </span>
       </template>
     </div>
-
-    <button
-      class="cursor-pointer"
-      v-show="type === 'edit'"
-      :title="$t('components.order.create-panel.items-list.remove-item')"
-      @click="emits('remove-item')"
-    >
-      <Trash2Icon
-        :size="24"
-        class="text-red-900 hover:text-red-700 transition-colors"
-      />
-    </button>
+    <slot name="delete">
+      <button
+        class="cursor-pointer"
+        v-show="type === 'edit'"
+        :title="$t('components.order.create-panel.items-list.remove-item')"
+        @click="emits('remove-item')"
+      >
+        <Trash2Icon
+          :size="24"
+          class="text-red-900 hover:text-red-700 transition-colors"
+        />
+      </button>
+    </slot>
   </div>
 </template>

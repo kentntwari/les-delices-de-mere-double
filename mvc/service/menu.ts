@@ -14,10 +14,10 @@ type TUpdateItemData = Partial<TUpdateItemSchema> & {
 };
 
 export const MenuServiceFailuresMessages = {
-  listItems: "Failed to list menu items",
-  addNewItem: "Failed to add new menu item",
-  updateItem: "Failed to update menu item",
-  deleteItem: "Failed to delete menu item",
+  list: "Failed to list menu items",
+  create: "Failed to create menu item",
+  update: "Failed to update menu item",
+  delete: "Failed to delete menu item",
 } as const;
 
 export class MenuService extends BaseService {
@@ -29,17 +29,17 @@ export class MenuService extends BaseService {
     super();
   }
 
-  async listItems() {
+  async list() {
     try {
       const items = await this.repository.getMenuItems();
       return this.mapper.toEntityList(items);
     } catch (error) {
-      this.defaultMapError(error, "service.menu.listItems");
+      this.defaultMapError(error, "service.menu.list");
       throw error;
     }
   }
 
-  async addNewItem(item: unknown): Promise<MenuItemEntity> {
+  async create(item: unknown): Promise<MenuItemEntity> {
     try {
       const t = ItemFactory.validateCreateItem(item);
       const b = this.factory.safeBuild(t);
@@ -49,44 +49,42 @@ export class MenuService extends BaseService {
 
       return this.mapper.toEntity(newItem);
     } catch (error) {
-      this.defaultMapError(error, "service.menu.addNewItem");
+      this.defaultMapError(error, "service.menu.create");
       throw error;
     }
   }
 
-  async updateItem(intent: TUpdateItemIntents, data: unknown): Promise<void> {
+  async update(intent: TUpdateItemIntents, data: unknown): Promise<void> {
     try {
       const validated = ItemFactory.validateUpdateItem(data);
 
       if (intent === "UPDATE_TITLE" && !validated.title)
         throw new ApplicationError(
-          MenuServiceFailuresMessages.updateItem +
-            ": Title is required for title update",
+          MenuServiceFailuresMessages.update + ": Title is required for title update",
           {
-            source: "service.menu.updateItem",
+            source: "service.menu.update",
           },
         );
       else if (intent === "UPDATE_PRICING" && !validated.unitPrice)
         throw new ApplicationError(
-          MenuServiceFailuresMessages.updateItem +
-            ": Unit price is required for price update",
+          MenuServiceFailuresMessages.update + ": Unit price is required for price update",
           {
-            source: "service.menu.updateItem",
+            source: "service.menu.update",
           },
         );
 
       await this.repository.updateMenuItem(validated);
     } catch (error) {
-      this.defaultMapError(error, "service.menu.updateItem");
+      this.defaultMapError(error, "service.menu.update");
       throw error;
     }
   }
 
-  async deleteItem(id: string): Promise<void> {
+  async delete(id: string): Promise<void> {
     try {
       await this.repository.deleteMenuItem(id);
     } catch (error) {
-      this.defaultMapError(error, "service.menu.deleteItem");
+      this.defaultMapError(error, "service.menu.delete");
       throw error;
     }
   }

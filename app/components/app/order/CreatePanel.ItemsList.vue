@@ -1,6 +1,6 @@
 <script lang="ts" setup>
   import { nanoid } from "nanoid";
-  import { Plus, Info } from "lucide-vue-next";
+  import { Plus, TriangleAlertIcon } from "lucide-vue-next";
 
   import { GET_MENU_ITEMS_KEY } from "~/app.keys";
 
@@ -58,7 +58,6 @@
       >
         <AppOrderPreviewEditPill
           :type="'edit'"
-          :index="idx"
           :menu-items="menuItems?.data.items || []"
           :current-item="{
             title: field.value.title,
@@ -74,12 +73,13 @@
                 unitPrice: item.unitPrice,
               })
           "
+          @update-quantity="(q) => update(idx, { ...field.value, quantity: q })"
           @remove-item="remove(idx)"
         />
       </li>
     </ul>
     <button
-      v-if="props.data.length < 10"
+      v-if="props.data.length < 7"
       type="button"
       class="min-w-32 lg:h-12 flex items-center justify-center gap-x-1 outline-2 outline-dashed outline-neutral-grey-700 hover:outline-neutral-grey-800 transition-colors duration-150 uppercase text-sm rounded-md cursor-pointer"
       :class="[data.length === 0 ? 'mt-4' : 'mt-0 w-full']"
@@ -100,13 +100,11 @@
       </span>
     </button>
     <p
-      v-show="data.length === 10"
-      class="w-full mt-2 font-regular text-sm text-neutral-grey-900 flex items-center gap-x-1"
+      v-show="data.length === 7"
+      class="w-full mt-2 font-regular text-sm text-orange-700 flex items-center gap-x-1"
     >
-      <span class="inline-block"><Info :size="16" /></span>
-      <span class="inline-block"
-        >You can only add up to 10 items per order</span
-      >
+      <span class="inline-block"><TriangleAlertIcon :size="16" /></span>
+      <span class="inline-block">You can only add up to 7 items per order</span>
     </p>
     <div
       v-show="data.length > 0"

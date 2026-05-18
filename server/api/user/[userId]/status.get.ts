@@ -38,7 +38,7 @@ export default defineEventHandler(async (event) => {
         event.path,
         event.method,
         { params: { userId }, err: e },
-        "[ERROR FETCHING USER STATUS]: Failed to fetch user status from cache",
+        "[ERROR FETCHING USER STATUS]: Failed to fetch user status",
       );
       throw e;
     });

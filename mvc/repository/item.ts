@@ -15,7 +15,7 @@ export const RepositoryFailuresMessages = {
   deleteMenuItem: "Failed to delete menu item from database",
 } as const;
 
-interface IItemRepository {
+export interface IItemRepository {
   getMenuItems(): Promise<MenuItemModel[]>;
   getMenuItem(id: string): Promise<MenuItemModel | null>;
   createMenuItem(data: MenuItemModel): Promise<MenuItemModel>;

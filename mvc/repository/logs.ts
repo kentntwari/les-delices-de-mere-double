@@ -24,7 +24,15 @@ export class OrderLogsRepository implements ILogsRepository {
   ) {}
 
   static createOrderLogMessage(createdAt: string, user: string) {
-    return `Order created ${DateUtils.convertDate(createdAt)} by ${user}`;
+    return `Order created on ${DateUtils.convertDate(createdAt)} by ${user}`;
+  }
+
+  static updateStatusLogMessage(
+    status: string,
+    updatedAt: string,
+    user: string,
+  ) {
+    return `Status updated to ${status} on ${DateUtils.convertDate(updatedAt)} by ${user}`;
   }
 
   static updatePaymentStatusLogMessage(
@@ -32,16 +40,16 @@ export class OrderLogsRepository implements ILogsRepository {
     updatedAt: string,
     user: string,
   ) {
-    return `Payment status updated to ${status} ${DateUtils.convertDate(updatedAt)} by ${user}`;
+    return `Payment status updated to ${status} on ${DateUtils.convertDate(updatedAt)} by ${user}`;
   }
 
   static deleteOrderLogMessage(deletedAt: string, user: string) {
-    return `Order deleted ${DateUtils.convertDate(deletedAt)} by ${user}`;
+    return `Order deleted on ${DateUtils.convertDate(deletedAt)} by ${user}`;
   }
 
   async createLog(orderId: string, message: string) {
     try {
-      const currentOrder = await this.orderRepo.getOrder(orderId);
+      const currentOrder = await this.orderRepo.get(orderId);
 
       if (!currentOrder)
         throw new DatabaseError(`Order with id ${orderId} not found`, {

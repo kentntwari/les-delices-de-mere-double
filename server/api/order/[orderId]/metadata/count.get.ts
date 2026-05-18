@@ -1,8 +1,9 @@
 import { createRequestLogger } from "~~/server/utils/logger";
 import { OrderController } from "~~/mvc/controllers/order";
-import { OrderRepository } from "~~/mvc/repository/order";
 
-const log = createRequestLogger("server.api.order.[orderId].meta.count.get.ts");
+const log = createRequestLogger(
+  "server.api.order.[orderId].metadata.count.get.ts",
+);
 
 export default defineEventHandler(async (event) => {
   try {
@@ -21,9 +22,7 @@ export default defineEventHandler(async (event) => {
       "get-order-count-metadata",
       orderId,
     );
-    return treatResponses(event, r) as {
-      data: ReturnType<OrderRepository["getCountMetadata"]>;
-    };
+    return treatResponses(event, r);
   } catch (error) {
     treatErrors(error);
   }

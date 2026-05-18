@@ -1,6 +1,9 @@
 import { createRequestLogger } from "~~/server/utils/logger";
 import { OrderController } from "~~/mvc/controllers/order";
-import { type THandleOrderIntentsSchema } from "~~/shared/utils/schemas.zod";
+import {
+  handleOrderIntentsSchema,
+  type THandleOrderIntentsSchema,
+} from "~~/shared/utils/schemas.zod";
 import { SilentSuccessResponse } from "~~/mvc/controllers/base";
 
 const log = createRequestLogger("server.api.order.[orderId].index.put.ts");
@@ -71,15 +74,29 @@ export default defineEventHandler(async (event) => {
         msg,
       );
 
-    const intent = query.intent as THandleOrderIntentsSchema;
+    const validatedIntent = handleOrderIntentsSchema.safeParse(query.intent);
+
+    if (!validatedIntent.success) {
+      log.warn(
+        event.path,
+        event.method,
+        { param: { orderId }, query, validationError: validatedIntent.error },
+        "PUT REQUEST INVALID intent value in query parameters",
+      );
+
+      throw createError({
+        statusCode: 400,
+        message: "Invalid intent value in query parameters",
+      });
+    }
 
     const r = await new OrderController(toWebRequest(event))
       .promoteUserId(userId)
-      .handleIntent(intent, orderId);
+      .handleIntent(validatedIntent.data, orderId);
 
-    switch (true) {
-      case r instanceof SilentSuccessResponse:
-        await cache
+    if (r instanceof SilentSuccessResponse)
+      await Promise.all([
+        cache
           .route("orders")
           .invalidate()
           .catch((error) =>
@@ -87,24 +104,18 @@ export default defineEventHandler(async (event) => {
               error,
               "Failed to invalidate orders cache after order update",
             ),
-          );
-
-      case r instanceof SilentSuccessResponse && intent === "mark-as-paid":
-        await cache
+          ),
+        cache
           .handler("logs")
           .withKey(`orderId_${encodeURIComponent(orderId.toLowerCase())}`)
           .invalidate()
           .catch((error) =>
             defaultLogAfterCacheOp(
               error,
-              `Failed to invalidate logs cache for order ${orderId} after marking as paid`,
+              `Failed to invalidate logs cache for order ${orderId} after order update`,
             ),
-          );
-        break;
-
-      default:
-        break;
-    }
+          ),
+      ]);
 
     return treatResponses(event, r);
   } catch (error) {

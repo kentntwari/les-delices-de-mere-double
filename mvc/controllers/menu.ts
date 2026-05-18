@@ -18,7 +18,7 @@ export class MenuController extends BaseController {
 
   async read() {
     try {
-      const items = await this.service.listItems();
+      const items = await this.service.list();
       return new JsonResponse({
         data: this.mapper.toDtoList(items),
       });
@@ -34,7 +34,7 @@ export class MenuController extends BaseController {
 
   async create() {
     try {
-      await this.service.addNewItem(await this.getBody());
+      await this.service.create(await this.getBody());
       return new SilentSuccessResponse();
     } catch (error) {
       this.logError(error, {
@@ -50,10 +50,9 @@ export class MenuController extends BaseController {
     try {
       const body = await this.getBody();
 
-      if (target === "title")
-        await this.service.updateItem("UPDATE_TITLE", body);
+      if (target === "title") await this.service.update("UPDATE_TITLE", body);
       else if (target === "price")
-        await this.service.updateItem("UPDATE_PRICING", body);
+        await this.service.update("UPDATE_PRICING", body);
       else throw new BadRequestResponse("Invalid update target");
 
       return new SilentSuccessResponse();
@@ -69,7 +68,7 @@ export class MenuController extends BaseController {
 
   async delete(id: string) {
     try {
-      await this.service.deleteItem(id);
+      await this.service.delete(id);
       return new SilentSuccessResponse();
     } catch (error) {
       this.logError(error, {

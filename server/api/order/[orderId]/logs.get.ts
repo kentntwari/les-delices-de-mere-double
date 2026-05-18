@@ -1,6 +1,5 @@
 import { createRequestLogger } from "~~/server/utils/logger";
 import { OrderController } from "~~/mvc/controllers/order";
-import { type TOrderLogDTO } from "~~/mvc/mapper/order";
 
 const log = createRequestLogger("server.api.order.[orderId].logs.get.ts");
 
@@ -26,7 +25,7 @@ export default defineCachedEventHandler(
         "get-logs",
         orderId,
       );
-      return treatResponses(event, r) as { data: TOrderLogDTO[] };
+      return treatResponses(event, r);
     } catch (error) {
       treatErrors(error);
     }

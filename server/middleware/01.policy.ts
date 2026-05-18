@@ -40,7 +40,6 @@ export default clerkMiddleware(async (event) => {
   );
 
   const { userId } = event.context.auth();
-
   if (!userId) return;
 
   // Skip policy check for user-specific endpoints (status/permissions)
@@ -77,13 +76,11 @@ export default clerkMiddleware(async (event) => {
       statusMessage: "User not found",
     });
   }
-
   switch (true) {
     case isApiItemPath:
       const mp = new MenuPolicy(user);
       checkPermission(mp, event.method);
       break;
-
     case isApiOrderPath:
       const op = new OrderPolicy(user);
       checkPermission(op, event.method);
