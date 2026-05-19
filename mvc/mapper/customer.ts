@@ -1,9 +1,14 @@
-import type { CustomerModel, CustomerRepository } from "../repository/customer";
+import type { CustomerModel } from "../repository/customer";
 import type { TCustomerSchema as TCustomerDTO } from "../../shared/utils/schemas.zod";
 
 import { BaseMapper } from "./base";
 import { CustomerEntity } from "../entities/customer";
 
+export type TCustomerFullDTO = Required<
+  Omit<TCustomerDTO, "address"> & {
+    address: TCustomerDTO["address"] | null;
+  }
+>;
 export class CustomerMapper extends BaseMapper<
   CustomerEntity,
   TCustomerDTO,
@@ -39,6 +44,25 @@ export class CustomerMapper extends BaseMapper<
       email: entity.email ?? undefined,
       phone: CustomerEntity.parsePhone(entity.phone),
       whatsappNumber: CustomerEntity.parsePhone(entity.whatsappPhoneNumber),
+    };
+  }
+
+  toFullDto(entity: CustomerEntity): TCustomerFullDTO {
+    return {
+      id: entity.id,
+      fullName: entity.name,
+      email: entity.email ?? "",
+      phone: CustomerEntity.parsePhone(entity.phone),
+      whatsappNumber: CustomerEntity.parsePhone(entity.whatsappPhoneNumber),
+      address: entity.address
+        ? {
+            street: entity.address.street,
+            city: entity.address.city,
+            province: entity.address.state,
+            postalCode: entity.address.postalCode,
+            country: "Canada",
+          }
+        : null,
     };
   }
 
