@@ -1,14 +1,18 @@
 import type { TCreateOrderFormSchema } from "../../shared/utils/schemas.zod";
+import type { IBaseRepository } from "./base";
 
 import { customAlphabet } from "nanoid";
 import { Prisma, PrismaClient } from "@prisma/client";
 
 import { db as dbClient } from "../../server/utils/db";
 
-import { DatabaseError } from "../errors.db";
 import { CustomerRepository } from "./customer";
+import { DeliveryRepository } from "./delivery";
 
 import { OrderTransformer } from "../transformers/order";
+
+import { DatabaseError } from "../errors.db";
+import { ApplicationError } from "../errors.appwide";
 
 const numericalAlphabet = "0123456789";
 const shortNanoid = customAlphabet(numericalAlphabet, 5);
@@ -51,41 +55,28 @@ export type OrderCommentModel = Prisma.OrderCommentGetPayload<{
 export type OrderLogModel = Prisma.OrderLogGetPayload<{}>;
 
 export const RepositoryFailuresMessages = {
-  getAllOrders: "Failed to get all orders from database",
+  getAll: "Failed to get all orders from database",
   getOrder: "Failed to get order from database",
-  getOrderComments: "Failed to get order comments from database",
-  getOrderLogs: "Failed to get order logs from database",
   createOrder: "Failed to create order in database",
   updateOrder: "Failed to update order in database",
-  updateOrderStatus: "Failed to update order status in database",
-  updateOrderPaymentStatus: "Failed to update order payment status in database",
   deleteOrder: "Failed to delete order from database",
+  getComments: "Failed to get order comments from database",
+  getLogs: "Failed to get order logs from database",
+  updateStatus: "Failed to update order status in database",
+  updatePaymentStatus: "Failed to update order payment status in database",
 } as const;
 
-interface IOrderRepository {
-  getAllOrders(): Promise<OrderModel[]>;
-  getOrder(id: string): Promise<OrderModel | null>;
-  getOrderComments(orderId: string): Promise<OrderCommentModel[]>;
-  getOrderLogs(orderId: string): Promise<OrderLogModel[]>;
-  createOrder(
-    customerId: string,
-    items: ReturnType<typeof OrderTransformer.toCreateOrderParams>,
-    deliveryInfo?: TCreateOrderFormSchema["delivery"],
-  ): Promise<OrderModel>;
-  // updateOrder(
-  //   orderId: string,
-  //   data: ReturnType<typeof OrderTransformer.toOrderUpdateParams>,
-  // ): Promise<OrderModel>;
-  updateOrderStatus(
+export interface IOrderRepository extends IBaseRepository<OrderModel> {
+  getComments(orderId: string): Promise<OrderCommentModel[]>;
+  getLogs(orderId: string): Promise<OrderLogModel[]>;
+  getDeliveryDetails(
     orderId: string,
-    status: OrderModel["status"],
-  ): Promise<void>;
-  updateOrderPaymentStatus(
+  ): ReturnType<DeliveryRepository["getOrderDeliveryDetails"]>;
+  updateStatus(orderId: string, status: OrderModel["status"]): Promise<void>;
+  updatePaymentStatus(
     orderId: string,
     status: OrderModel["paymentStatus"],
   ): Promise<void>;
-  deleteOrder(orderId: string, customerId: string): Promise<void>;
-  getCustomerIdByOrderId(orderId: string): Promise<string | null>;
 }
 
 export class OrderRepository implements IOrderRepository {
@@ -94,9 +85,12 @@ export class OrderRepository implements IOrderRepository {
     private customerRepository: CustomerRepository = new CustomerRepository(
       this.db,
     ),
+    private deliveryRepository: DeliveryRepository = new DeliveryRepository(
+      this.db,
+    ),
   ) {}
 
-  async getAllOrders() {
+  async getAll() {
     try {
       return await this.db.order.findMany({
         include: {
@@ -113,14 +107,14 @@ export class OrderRepository implements IOrderRepository {
         },
       });
     } catch (error) {
-      throw new DatabaseError(RepositoryFailuresMessages.getAllOrders, {
-        operation: "getAllOrders",
+      throw new DatabaseError(RepositoryFailuresMessages.getAll, {
+        operation: "getAll",
         error,
       });
     }
   }
 
-  async getOrder(id: string) {
+  async get(id: string) {
     try {
       return await this.db.order.findUnique({
         where: { id },
@@ -146,7 +140,7 @@ export class OrderRepository implements IOrderRepository {
     }
   }
 
-  async getOrderComments(orderId: string) {
+  async getComments(orderId: string) {
     try {
       return await this.db.orderComment.findMany({
         where: { orderId },
@@ -159,15 +153,15 @@ export class OrderRepository implements IOrderRepository {
         },
       });
     } catch (error) {
-      throw new DatabaseError(RepositoryFailuresMessages.getOrderComments, {
-        operation: "getOrderComments",
+      throw new DatabaseError(RepositoryFailuresMessages.getComments, {
+        operation: "getComments",
         orderId,
         error,
       });
     }
   }
 
-  async getOrderLogs(orderId: string) {
+  async getLogs(orderId: string) {
     try {
       return await this.db.orderLog.findMany({
         where: {
@@ -178,48 +172,22 @@ export class OrderRepository implements IOrderRepository {
         },
       });
     } catch (error) {
-      throw new DatabaseError(RepositoryFailuresMessages.getOrderLogs, {
-        operation: "getOrderLogs",
+      throw new DatabaseError(RepositoryFailuresMessages.getLogs, {
+        operation: "getLogs",
         orderId,
         error,
       });
     }
   }
 
-  async getDeliveryDetails(orderId: string) {
+  async getDeliveryDetails(
+    orderId: string,
+  ): ReturnType<DeliveryRepository["getOrderDeliveryDetails"]> {
     try {
-      const result = await this.db.order.findUniqueOrThrow({
-        where: { id: orderId },
-        select: {
-          deliveryFee: true,
-          customer: {
-            select: {
-              street: true,
-              city: true,
-              state: true,
-              postalCode: true,
-            },
-          },
-        },
-      });
-
-      return {
-        fee: result.deliveryFee,
-        ...(result.customer !== null
-          ? {
-              address: {
-                street: result.customer.street,
-                city: result.customer.city,
-                province: result.customer.state,
-                postalCode: result.customer.postalCode,
-                country: "CANADA",
-              },
-            }
-          : { address: undefined }),
-      };
+      return await this.deliveryRepository.getOrderDeliveryDetails(orderId);
     } catch (error) {
-      throw new DatabaseError("Failed to get order delivery details", {
-        operation: "getOrderDeliveryDetails",
+      throw new DatabaseError(RepositoryFailuresMessages.getOrder, {
+        operation: "getDeliveryDetails",
         orderId,
         error,
       });
@@ -269,7 +237,7 @@ export class OrderRepository implements IOrderRepository {
     }
   }
 
-  async getCustomerIdByOrderId(orderId: string) {
+  async getCustomerIdFromOrderId(orderId: string) {
     try {
       const o = await this.db.order.findUnique({
         where: { id: orderId },
@@ -285,103 +253,167 @@ export class OrderRepository implements IOrderRepository {
       return o?.customer?.id || null;
     } catch (error) {
       throw new DatabaseError("Failed to retrieve customer from order", {
-        operation: "getCustomerIdByOrderId",
+        operation: "getCustomerIdFromOrderId",
         orderId,
         error,
       });
     }
   }
 
-  async createOrder(
+  async create(
     customerId: string,
     items: ReturnType<typeof OrderTransformer.toCreateOrderParams>,
     deliveryInfo?: TCreateOrderFormSchema["delivery"],
   ) {
+    let scopedDeliveryRepoWithComputedStates: DeliveryRepository;
+    let scopedTxBoundCustomerRepo: CustomerRepository;
+
     try {
+      if (deliveryInfo?.isRequired && !deliveryInfo.address)
+        throw new DatabaseError(RepositoryFailuresMessages.createOrder, {
+          operation: "create",
+          customerId,
+          error:
+            "Delivery info is marked as required but no delivery address provided",
+        });
+
       const customer = await this.customerRepository.getCustomer(customerId);
 
       if (!customer)
         throw new DatabaseError(RepositoryFailuresMessages.createOrder, {
-          operation: "createOrder",
+          operation: "create",
           customerId,
+          error: "Customer not found",
         });
 
-      const a = await this.db.orderDeliveryAddress.findFirst({
-        where: {
-          street: deliveryInfo?.address?.street,
-          city: deliveryInfo?.address?.city,
-          state: deliveryInfo?.address?.province,
-          postalCode: deliveryInfo?.address?.postalCode,
-          country: deliveryInfo?.address?.country,
-        },
-        select: {
-          id: true,
-        },
-      });
-
-      return await this.db.order.create({
-        data: {
-          id: "OA" + shortNanoid(),
-          items: {
-            create: items.map((item) => ({
-              itemId: item.itemId,
-              quantity: item.quantity,
-            })),
-          },
-          customer: {
-            connect: {
-              id: customer.id,
-              ...(deliveryInfo?.address?.isHomeAddress && {
-                street: deliveryInfo.address.street,
-                city: deliveryInfo.address.city,
+      return await this.db.$transaction(async (tx) => {
+        if (deliveryInfo?.isRequired && deliveryInfo.address)
+          scopedDeliveryRepoWithComputedStates =
+            await DeliveryRepository.create(tx, {
+              addressInfo: {
+                ...deliveryInfo.address,
                 state: deliveryInfo.address.province,
-                postalCode: deliveryInfo.address.postalCode,
-                country: deliveryInfo.address.country,
-              }),
+              },
+              customerId,
+            });
+
+        const oid = "OA" + shortNanoid();
+        const o = await tx.order.create({
+          data: {
+            id: oid,
+            items: {
+              create: items.map((item) => ({
+                itemId: item.itemId,
+                quantity: item.quantity,
+              })),
             },
-          },
-          ...(deliveryInfo?.isRequired &&
-            deliveryInfo.address && {
-              deliveryAddress: {
-                connectOrCreate: {
-                  where: {
-                    id: a?.id || "",
+            customer: {
+              connect: {
+                id: customer.id,
+              },
+            },
+            ...(deliveryInfo?.isRequired
+              ? {
+                  deliveryFee: deliveryInfo.minimumFee || 10,
+                  deliveryAddress: {
+                    create: {
+                      orderId: oid,
+                    },
                   },
-                  create: {
-                    street: deliveryInfo.address.street,
-                    city: deliveryInfo.address.city,
-                    state: deliveryInfo.address.province,
-                    postalCode: deliveryInfo.address.postalCode,
-                    country: deliveryInfo.address.country,
+                }
+              : {
+                  deliveryFee: 0,
+                }),
+          },
+          include: {
+            items: {
+              include: {
+                item: {
+                  select: {
+                    title: true,
+                    unitPrice: true,
                   },
                 },
               },
-            }),
-          ...(deliveryInfo?.isRequired &&
-            deliveryInfo.minimumFee && {
-              deliveryFee: deliveryInfo.minimumFee,
-            }),
-        },
-        include: {
-          items: {
-            include: {
-              item: {
-                select: {
-                  title: true,
-                  unitPrice: true,
-                },
-              },
             },
           },
-        },
+        });
+
+        if (!deliveryInfo?.isRequired) return o;
+
+        scopedTxBoundCustomerRepo = new CustomerRepository(tx);
+
+        switch (true) {
+          case scopedDeliveryRepoWithComputedStates.matchesCustomerHomeAddress:
+            await scopedDeliveryRepoWithComputedStates.assignAddressToOrder(
+              o.id,
+              customer.homeAddressId!,
+              undefined,
+            );
+            break;
+
+          case !scopedDeliveryRepoWithComputedStates.matchesCustomerHomeAddress &&
+            deliveryInfo.address!.isHomeAddress:
+            const updatedCx =
+              await scopedTxBoundCustomerRepo.updateCustomerAddress(
+                customerId,
+                {
+                  street: deliveryInfo.address!.street,
+                  city: deliveryInfo.address!.city,
+                  state: deliveryInfo.address!.province,
+                  postalCode: deliveryInfo.address!.postalCode,
+                  country: deliveryInfo.address!.country.toUpperCase(),
+                },
+              );
+
+            await scopedDeliveryRepoWithComputedStates.assignAddressToOrder(
+              o.id,
+              updatedCx.homeAddressId!,
+              undefined,
+            );
+            break;
+
+          case !scopedDeliveryRepoWithComputedStates.matchesCustomerHomeAddress &&
+            !deliveryInfo?.address?.isHomeAddress:
+            const delivery =
+              await scopedDeliveryRepoWithComputedStates.assignAddressToOrder(
+                o.id,
+                undefined,
+                {
+                  ...deliveryInfo.address!,
+                  state: deliveryInfo.address!.province,
+                },
+              );
+
+            await scopedDeliveryRepoWithComputedStates.assignDeliveryToCustomer(
+              delivery._meta.order?.orderDeliveryId,
+              o.id,
+              customerId,
+            );
+            break;
+
+          default:
+            throw new ApplicationError(
+              "Unhandled case in order creation delivery assignment logic",
+              {
+                operation: "create",
+                customerId,
+                deliveryInfo,
+              },
+            );
+        }
+
+        return o;
       });
     } catch (error) {
+      if (error instanceof ApplicationError) throw error;
+      if (error instanceof DatabaseError) throw error;
       throw new DatabaseError(
         error instanceof DatabaseError
           ? RepositoryFailuresMessages.createOrder + ": " + error.message
           : RepositoryFailuresMessages.createOrder,
         {
-          operation: "createOrder",
+          operation: "create",
           customerId,
           items,
           deliveryInfo,
@@ -391,61 +423,125 @@ export class OrderRepository implements IOrderRepository {
     }
   }
 
-  // async updateOrder(
-  //   orderId: string,
-  //   data: Omit<ReturnType<typeof OrderTransformer.toOrderUpdateParams>, "id">,
-  // ) {
-  //   try {
-  //     const o = await this.db.order.findUniqueOrThrow({
-  //       where: { id: orderId },
-  //     });
+  async update(
+    orderId: string,
+    data: Omit<ReturnType<typeof OrderTransformer.toOrderUpdateParams>, "id">,
+  ) {
+    try {
+      let scopedDeliveryRepoWithComputedStates: DeliveryRepository;
 
-  //     return await this.db.order.update({
-  //       where: { id: o.id },
-  //       data: {
-  //         items: {
-  //           deleteMany: {},
-  //           createMany: {
-  //             data: data.items.map((item) => ({
-  //               itemId: item.itemId,
-  //               quantity: item.quantity,
-  //             })),
-  //           },
-  //         },
-  //         deliveryFee: data.deliveryFee,
-  //       },
-  //       include: {
-  //         items: {
-  //           include: {
-  //             item: {
-  //               select: {
-  //                 title: true,
-  //                 unitPrice: true,
-  //               },
-  //             },
-  //           },
-  //         },
-  //       },
-  //     });
-  //   } catch (error) {
-  //     throw new DatabaseError(RepositoryFailuresMessages.updateOrder, {
-  //       operation: "updateOrder",
-  //       orderId,
-  //       data,
-  //       error,
-  //     });
-  //   }
-  // }
+      let itemsAdded: Omit<OrderItemModel, "item">[] = [];
 
-  async updateOrderStatus(orderId: string, status: OrderModel["status"]) {
+      const currentOrder = await this.db.order.findUniqueOrThrow({
+        where: { id: orderId },
+      });
+
+      return await this.db.$transaction(async (tx) => {
+        data.items.map((item) =>
+          tx.menuItem
+            .findFirst({
+              where: { id: item.id },
+            })
+            .then((mi) => {
+              if (mi !== null)
+                itemsAdded.push({
+                  id: mi.id,
+                  orderId,
+                  quantity: item.quantity,
+                });
+            }),
+        );
+
+        if (data.deliveryAddress)
+          scopedDeliveryRepoWithComputedStates =
+            await DeliveryRepository.create(tx, {
+              addressInfo: {
+                street: data.deliveryAddress.street,
+                city: data.deliveryAddress.city,
+                state: data.deliveryAddress.province,
+                postalCode: data.deliveryAddress.postalCode,
+                country: data.deliveryAddress.country.toUpperCase(),
+              },
+            });
+
+        const r = !data.deliveryAddress
+          ? undefined
+          : await scopedDeliveryRepoWithComputedStates.confirmAddressInfo(
+              data.deliveryAddress.street,
+              data.deliveryAddress.city,
+              data.deliveryAddress.province,
+              data.deliveryAddress.postalCode,
+              data.deliveryAddress.country.toUpperCase(),
+            );
+
+        if (
+          !r?.valid &&
+          !currentOrder.deliveryAddressId &&
+          data.deliveryAddress
+        )
+          await tx.order.update({
+            where: { id: orderId },
+            data: {
+              items: {
+                deleteMany: {},
+                createMany: {
+                  data: itemsAdded.map((item) => ({
+                    orderId: item.orderId,
+                    menuItemId: item.id,
+                    quantity: item.quantity,
+                  })),
+                },
+              },
+              ...(r?.address &&
+                currentOrder.deliveryAddressId && {
+                  deliveryAddress: {
+                    where: {
+                      id: currentOrder.deliveryAddressId,
+                    },
+                    update: {
+                      deliveryAddress: {
+                        connect: {
+                          id: r.address.id,
+                        },
+                      },
+                    },
+                  },
+                }),
+            },
+          });
+
+        const order = await this.get(orderId);
+
+        if (!order)
+          throw new DatabaseError(RepositoryFailuresMessages.updateOrder, {
+            operation: "update",
+            orderId,
+            data,
+            error:
+              "Successfully updated order but failed to retrieve the updated order",
+          });
+
+        return order;
+      });
+    } catch (error) {
+      throw new DatabaseError(RepositoryFailuresMessages.updateOrder, {
+        operation: "update",
+        orderId,
+        data,
+        error,
+      });
+    }
+  }
+
+  async updateStatus(orderId: string, status: OrderModel["status"]) {
     try {
       await this.db.order.update({
         where: { id: orderId },
         data: { status },
       });
     } catch (error) {
-      throw new DatabaseError(RepositoryFailuresMessages.updateOrderStatus, {
-        operation: "updateOrderStatus",
+      throw new DatabaseError(RepositoryFailuresMessages.updateStatus, {
+        operation: "updateStatus",
         orderId,
         status,
         error,
@@ -453,7 +549,7 @@ export class OrderRepository implements IOrderRepository {
     }
   }
 
-  async updateOrderPaymentStatus(
+  async updatePaymentStatus(
     orderId: string,
     status: OrderModel["paymentStatus"],
   ) {
@@ -463,19 +559,16 @@ export class OrderRepository implements IOrderRepository {
         data: { paymentStatus: status },
       });
     } catch (error) {
-      throw new DatabaseError(
-        RepositoryFailuresMessages.updateOrderPaymentStatus,
-        {
-          operation: "updateOrderPaymentStatus",
-          orderId,
-          status,
-          error,
-        },
-      );
+      throw new DatabaseError(RepositoryFailuresMessages.updatePaymentStatus, {
+        operation: "updatePaymentStatus",
+        orderId,
+        status,
+        error,
+      });
     }
   }
 
-  async deleteOrder(orderId: string) {
+  async delete(orderId: string) {
     try {
       await this.db.order.delete({
         where: { id: orderId },
