@@ -1,6 +1,9 @@
-import type { TCreateOrderFormSchema } from "../../shared/utils/schemas.zod";
+import type {
+  TCreateOrderFormSchema,
+  TUpdateOrderFormSchema,
+} from "../../shared/utils/schemas.zod";
 
-import { OrderRepository } from "../repository/order";
+import { OrderRepository, type OrderModel } from "../repository/order";
 
 export class OrderTransformer {
   static toCreateOrderParams(data: TCreateOrderFormSchema["items"]) {
@@ -11,24 +14,42 @@ export class OrderTransformer {
     }));
   }
 
-  static toCreateOrderDeliveryInfo(data: TCreateOrderFormSchema["delivery"]) {
-    if (!data?.isRequired) return null;
-    return {
-      isRequested: data.isRequired,
-      fee: data.minimumFee,
-    };
-  }
-
   static toCountMetadata(
-    data: Awaited<
+    model: Awaited<
       ReturnType<typeof OrderRepository.prototype.getCountMetadata>
     >,
   ) {
-    if (data.length === 0) return null;
+    if (model.length === 0) return null;
     return {
-      comments: data.at(0)!.comment_count,
-      logs: data.at(0)!.log_count,
-      items: data.at(0)!.item_count,
+      comments: model.at(0)!.comment_count,
+      logs: model.at(0)!.log_count,
+      items: model.at(0)!.item_count,
+    };
+  }
+
+  static toDeliveryDetails(
+    model: Awaited<
+      ReturnType<typeof OrderRepository.prototype.getDeliveryDetails>
+    >,
+  ) {
+    if (!model) return { isRequested: false };
+    if (!model.fees?.total) return { isRequested: false };
+    else
+      return {
+        isRequested: true,
+        fee: model.fees.total,
+        address: model.address,
+      };
+  }
+
+  static toOrderUpdateParams(data: TUpdateOrderFormSchema) {
+    return {
+      id: data.id,
+      items: [...data.items.current, ...data.items.added],
+      deliveryAddress:
+        data.delivery.isRequired && data.delivery.address
+          ? data.delivery.address
+          : null,
     };
   }
 }
