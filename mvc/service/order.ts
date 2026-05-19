@@ -30,6 +30,7 @@ export class OrderService extends BaseService {
     private userService: UserService = new UserService(),
   ) {
     super();
+    tryHealthCheck();
   }
 
   defineAuthor(userId: string) {
@@ -56,9 +57,38 @@ export class OrderService extends BaseService {
     return this;
   }
 
+  async read(orderId: string) {
+    const order = await this.repository.get(orderId);
+    if (!order)
+      throw new ApplicationError("Order not found", {
+        operation: "service.order.read",
+        orderId,
+      });
+
+    return order;
+  }
+
+  async resolveCustomerForOrder(orderId: string) {
+    try {
+      const customerId =
+        await this.repository.getCustomerIdFromOrderId(orderId);
+
+      if (!customerId)
+        throw new ApplicationError("Customer not found for order", {
+          operation: "service.order.resolveCustomerForOrder",
+          orderId,
+        });
+
+      return { customer: customerId };
+    } catch (error) {
+      this.defaultMapError(error, "service.order.resolveCustomerForOrder");
+      throw error;
+    }
+  }
+
   async listAll() {
     try {
-      const model = await this.repository.getAllOrders();
+      const model = await this.repository.getAll();
       return this.mapper.toEntityList(model);
     } catch (error) {
       this.defaultMapError(error, "service.order.listAll");
@@ -68,7 +98,7 @@ export class OrderService extends BaseService {
 
   async listComments(orderId: string) {
     try {
-      const model = await this.repository.getOrderComments(orderId);
+      const model = await this.repository.getComments(orderId);
       return this.mapper.toCommentEntityList(model);
     } catch (error) {
       this.defaultMapError(error, "service.order.listComments");
@@ -78,7 +108,7 @@ export class OrderService extends BaseService {
 
   async listLogs(orderId: string) {
     try {
-      const model = await this.repository.getOrderLogs(orderId);
+      const model = await this.repository.getLogs(orderId);
       return this.mapper.toLogEntityList(model);
     } catch (error) {
       this.defaultMapError(error, "service.order.listLogs");
@@ -99,19 +129,40 @@ export class OrderService extends BaseService {
     }
   }
 
+  async listDeliveryDetails(orderId: string) {
+    try {
+      const d = await this.repository.getDeliveryDetails(orderId);
+
+      return OrderTransformer.toDeliveryDetails(d);
+    } catch (error) {
+      throw new ApplicationError("Failed to retrieve order delivery details", {
+        operation: "service.order.listDeliveryDetails",
+        orderId,
+        error,
+      });
+    }
+  }
+
   async create(data: unknown) {
     let orderId: string | null = null;
-    let orderTimeStamp: string | null = null;
     let isOrderCreated = false;
 
     try {
-      tryHealthCheck();
-
       const { cx, items, delivery } = this.factory.validateCreateOrder(data);
 
-      const currentCX = await this.cxService.getOrCreateCustomer({
+      const currentCX = await this.cxService.readOrCreateCustomer({
         ...cx,
         id: cx.id ?? undefined,
+        ...(delivery.address &&
+          delivery.address.isHomeAddress && {
+            address: {
+              street: delivery.address.street,
+              city: delivery.address.city,
+              province: delivery.address.province,
+              postalCode: delivery.address.postalCode,
+              country: delivery.address.country,
+            },
+          }),
       });
 
       if (!currentCX)
@@ -121,15 +172,14 @@ export class OrderService extends BaseService {
           error: "Customer not found",
         });
 
-      const order = await this.repository.createOrder(
+      const order = await this.repository.create(
         currentCX.id,
         OrderTransformer.toCreateOrderParams(items),
-        OrderTransformer.toCreateOrderDeliveryInfo(delivery),
+        delivery,
       );
 
       isOrderCreated = true;
       orderId = order.id;
-      orderTimeStamp = order.createdAt.toISOString();
 
       return this.mapper.toEntity(order);
     } catch (error) {
@@ -141,7 +191,7 @@ export class OrderService extends BaseService {
           .createLog(
             orderId,
             OrderLogsRepository.createOrderLogMessage(
-              orderTimeStamp || new Date().toISOString(),
+              new Date().toISOString(),
               this.author || "system",
             ),
           )
@@ -158,35 +208,97 @@ export class OrderService extends BaseService {
     }
   }
 
+  async update(data: unknown) {
+    try {
+      const { id, items, delivery } = this.factory.validateUpdateOrder(data);
+      const order = await this.repository.update(
+        id,
+        OrderTransformer.toOrderUpdateParams({ id, items, delivery }),
+      );
+      return this.mapper.toEntity(order);
+    } catch (error) {
+      this.defaultMapError(error, "service.order.update");
+      throw error;
+    }
+  }
+
+  async delete(orderId: string) {
+    let isDeleted: boolean = false;
+
+    try {
+      await this.repository.delete(orderId);
+      isDeleted = true;
+    } catch (error) {
+      this.defaultMapError(error, "service.order.delete");
+      throw error;
+    } finally {
+      if (isDeleted)
+        await this.logsRepo
+          .createLog(
+            orderId,
+            OrderLogsRepository.deleteOrderLogMessage(
+              new Date().toISOString(),
+              this.author || "system",
+            ),
+          )
+          .catch((logError) => {
+            log.error(
+              {
+                err: logError,
+                operation: "service.order.delete - createLog",
+                orderId,
+              },
+              "Failed to create order log (best-effort)",
+            );
+          });
+    }
+  }
+
+  async updateStatus(status: OrderModel["status"], orderId: string) {
+    let isUpdated: boolean = false;
+
+    try {
+      const o = await this.read(orderId);
+      if (o.status === status) return;
+      await this.repository.updateStatus(orderId, status);
+      isUpdated = true;
+    } catch (error) {
+      this.defaultMapError(error, "service.order.updateStatus");
+      throw error;
+    } finally {
+      if (isUpdated)
+        await this.logsRepo
+          .createLog(
+            orderId,
+            OrderLogsRepository.updateStatusLogMessage(
+              status,
+              new Date().toISOString(),
+              this.author || "system",
+            ),
+          )
+          .catch((logError) => {
+            log.error(
+              {
+                err: logError,
+                operation: "service.order.updateStatus - createLog",
+                orderId,
+              },
+              "Failed to create order log (best-effort)",
+            );
+          });
+    }
+  }
+
   async updatePaymentStatus(
     status: OrderModel["paymentStatus"],
     orderId: string,
-    userId: string,
   ) {
     let isUpdated: boolean = false;
 
-    let orderTimeStamp: string | null = null;
-
     try {
-      tryHealthCheck();
-
-      const user = await this.userService.readUser(userId);
-
-      if (!user)
-        log.warn(
-          {
-            userId,
-          },
-          "User not found during updatePaymentStatus - defaulting to 'system' for order logs",
-        );
-      const o = await this.repository.getOrder(orderId);
-      if (!o)
-        throw new ApplicationError("Order not found", {
-          operation: "service.order.updatePaymentStatus",
-          orderId,
-        });
-      else if (o.paymentStatus === status) return;
-      else await this.repository.updateOrderPaymentStatus(orderId, status);
+      const o = await this.read(orderId);
+      if (o.paymentStatus === status) return;
+      await this.repository.updatePaymentStatus(orderId, status);
 
       isUpdated = true;
     } catch (error) {
@@ -199,7 +311,7 @@ export class OrderService extends BaseService {
             orderId,
             OrderLogsRepository.updatePaymentStatusLogMessage(
               status,
-              orderTimeStamp || new Date().toISOString(),
+              new Date().toISOString(),
               this.author || "system",
             ),
           )
@@ -208,42 +320,6 @@ export class OrderService extends BaseService {
               {
                 err: logError,
                 operation: "service.order.updatePaymentStatus - createLog",
-                orderId,
-              },
-              "Failed to create order log (best-effort)",
-            );
-          });
-    }
-  }
-
-  async delete(orderId: string) {
-    let isDeleted: boolean = false;
-    let deletionTimeStamp: string | null = null;
-
-    try {
-      tryHealthCheck();
-
-      await this.repository.deleteOrder(orderId);
-      isDeleted = true;
-      deletionTimeStamp = new Date().toISOString();
-    } catch (error) {
-      this.defaultMapError(error, "service.order.deleteOrder");
-      throw error;
-    } finally {
-      if (isDeleted)
-        await this.logsRepo
-          .createLog(
-            orderId,
-            OrderLogsRepository.deleteOrderLogMessage(
-              deletionTimeStamp || new Date().toISOString(),
-              this.author || "system",
-            ),
-          )
-          .catch((logError) => {
-            log.error(
-              {
-                err: logError,
-                operation: "service.order.deleteOrder - createLog",
                 orderId,
               },
               "Failed to create order log (best-effort)",
