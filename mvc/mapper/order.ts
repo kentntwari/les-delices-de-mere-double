@@ -32,7 +32,7 @@ export class OrderMapper extends BaseMapper<
   OrderModel
 > {
   toEntity(data: OrderModel): OrderEntity {
-    return new OrderEntity(
+    const o = new OrderEntity(
       data.id,
       data.customerId || "UNKNOWN_CUSTOMER_ID",
       // FIX: This should come from a ItemMapper or similar
@@ -41,15 +41,20 @@ export class OrderMapper extends BaseMapper<
           new OrderedItemEntity(
             id,
             orderId ?? "",
-            item.title,
+            item?.title ?? "UNKNOWN_ITEM_TITLE",
             "",
-            item.unitPrice,
+            item?.unitPrice ?? 0,
             quantity,
           ),
       ),
       data.status,
       data.paymentStatus,
+      data.deliveryFee ? "requested" : "not-requested",
     );
+
+    if (data.deliveryFee) o.deliveryFee = data.deliveryFee.toString();
+
+    return o;
   }
 
   toEntityList(data: OrderModel[]): OrderEntity[] {
