@@ -1,8 +1,10 @@
 import {
   type TOrderSchema,
   type TCreateOrderFormSchema,
+  type TUpdateOrderFormSchema,
   orderSchema,
   createOrderFormSchema,
+  updateOrderFormSchema,
 } from "../../shared/utils/schemas.zod";
 
 import { BaseFactory } from "./base";
@@ -12,6 +14,7 @@ import { ApplicationError } from "../errors.appwide";
 
 type TOrderDTO = Omit<TOrderSchema, "total"> & { customerId: string };
 type TCreateOrderDTO = TCreateOrderFormSchema;
+type TUpdateOrderDTO = TUpdateOrderFormSchema;
 
 export class OrderFactory extends BaseFactory<TOrderDTO, OrderEntity> {
   protected build(data: TOrderDTO): OrderEntity {
@@ -87,6 +90,29 @@ export class OrderFactory extends BaseFactory<TOrderDTO, OrderEntity> {
             originalError: error,
             input: data,
             source: "mvc.factories.order.OrderFactory.validateCreateOrder",
+          },
+        );
+    }
+  }
+
+  public validateUpdateOrder(data: unknown): TUpdateOrderDTO {
+    try {
+      const parsedData = updateOrderFormSchema.safeParse(data);
+      if (parsedData.success) return parsedData.data;
+      throw new ApplicationError("Validation failed", {
+        issues: parsedData.error.issues,
+        input: JSON.stringify(data),
+        source: "mvc.factories.order.OrderFactory.validateUpdateOrder",
+      });
+    } catch (error) {
+      if (error instanceof ApplicationError) throw error;
+      else
+        throw new ApplicationError(
+          "Unknown error occurred during validation of update order form",
+          {
+            originalError: error,
+            input: data,
+            source: "mvc.factories.order.OrderFactory.validateUpdateOrder",
           },
         );
     }
