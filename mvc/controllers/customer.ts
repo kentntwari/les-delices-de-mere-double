@@ -1,7 +1,6 @@
-import { CustomerMapper } from "../mapper/customer";
-import { CustomerService } from "../service/customer";
 import { BaseController, BadRequestResponse, JsonResponse } from "./base";
-
+import { CustomerMapper, type TCustomerFullDTO } from "../mapper/customer";
+import { CustomerService } from "../service/customer";
 export class CustomerController extends BaseController {
   constructor(
     req: Request,
@@ -26,8 +25,26 @@ export class CustomerController extends BaseController {
     }
   }
 
-  async read() {
-    return new BadRequestResponse("Not implemented");
+  async read(id: string) {
+    try {
+      const customer = await this.service.read(id);
+
+      if (!customer) return new BadRequestResponse("Customer not found");
+
+      return new JsonResponse<{ data: TCustomerFullDTO }>({
+        data: this.mapper.toFullDto(customer),
+      });
+    } catch (error) {
+      this.logError(error, {
+        origin: "controllers.customer.read",
+        customerId: id,
+      });
+
+      return this.mapErrorResponse(error, {
+        origin: "controllers.customer.read",
+        customerId: id,
+      });
+    }
   }
 
   async update() {
