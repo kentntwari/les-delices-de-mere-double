@@ -37,9 +37,10 @@ export class OrderMapper extends BaseMapper<
       data.customerId || "UNKNOWN_CUSTOMER_ID",
       // FIX: This should come from a ItemMapper or similar
       data.items.map(
-        ({ id, orderId, item, quantity }) =>
+        ({ orderId, item, quantity, itemId }) =>
           new OrderedItemEntity(
-            id,
+            // INFO: Instead of using the assigned id best to use the parent menu item id to avoid mismatches with menu items
+            itemId || item?.id || "UNKNOWN_ITEM_ID",
             orderId ?? "",
             item?.title ?? "UNKNOWN_ITEM_TITLE",
             "",
@@ -88,8 +89,43 @@ export class OrderMapper extends BaseMapper<
     };
   }
 
+  fromDto(
+    dto: TOrderDTO,
+    customerId?: string,
+    deliveryStatus?: "requested" | "not-requested",
+  ): OrderEntity {
+    const o = new OrderEntity(
+      dto.id,
+      customerId ?? "UNKNOWN_CUSTOMER_ID",
+      dto.items.map(
+        (item) =>
+          new OrderedItemEntity(
+            item.id,
+            dto.id,
+            item.title,
+            "",
+            item.unitPrice,
+            item.quantity,
+          ),
+      ),
+      dto.status,
+      dto.paymentStatus,
+      deliveryStatus ?? "not-requested",
+    );
+
+    return o;
+  }
+
   toDtoList(entities: OrderEntity[]): TOrderDTO[] {
     return entities.map((entity) => this.toDto(entity));
+  }
+
+  fromDtoList(
+    dtos: TOrderDTO[],
+    customerId?: string,
+    deliveryStatus?: "requested" | "not-requested",
+  ): OrderEntity[] {
+    return dtos.map((dto) => this.fromDto(dto, customerId, deliveryStatus));
   }
 
   toLogEntity(data: OrderLogModel): OrderLogEntity {
