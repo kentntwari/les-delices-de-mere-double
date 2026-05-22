@@ -86,9 +86,24 @@ export class OrderService extends BaseService {
     }
   }
 
+  private _ensureItemIdPresence(orderItem: OrderModel["items"][number]) {
+    if (!orderItem.itemId && !orderItem?.item?.id)
+      throw new ApplicationError("Invalid Item Id", {
+        operation: "_ensureItemIdPresence",
+        orderItem,
+        error:
+          "Expected itemId to be present for order item but instead received" +
+          JSON.stringify(orderItem.itemId),
+      });
+  }
+
   async listAll() {
     try {
       const model = await this.repository.getAll();
+
+      for (const order of model)
+        for (const item of order.items) this._ensureItemIdPresence(item);
+
       return this.mapper.toEntityList(model);
     } catch (error) {
       this.defaultMapError(error, "service.order.listAll");
