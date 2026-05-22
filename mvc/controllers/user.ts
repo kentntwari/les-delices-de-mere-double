@@ -1,23 +1,27 @@
 import { errorMap } from "../../shared/utils/errorMap";
 import { createLogger } from "../../server/utils/logger";
 import { UserService } from "../service/user";
+import { UserMapper } from "../mapper/user";
 import {
   BaseController,
   BadRequestResponse,
   NotFoundResponse,
   JsonResponse,
-  ForbiddenResponse,
+  SilentSuccessResponse,
 } from "./base";
 
 interface IReadUserArgs {
   userId: string;
-  intent: "GET_STATUS" | "GET_PERMISSIONS";
+  intent?: "GET_STATUS" | "GET_PERMISSIONS";
 }
 
 const log = createLogger("mvc.controllers.user");
 
 export class UserController extends BaseController {
-  constructor(req: Request, private service: UserService = new UserService()) {
+  constructor(
+    req: Request,
+    private service: UserService = new UserService(),
+  ) {
     super(req);
   }
 
@@ -28,6 +32,7 @@ export class UserController extends BaseController {
   public async read(args: IReadUserArgs) {
     try {
       const user = await this.service.readUser(args.userId);
+
       if (!user) return new NotFoundResponse(errorMap.app.user.NOT_FOUND);
       else
         switch (true) {
@@ -40,11 +45,9 @@ export class UserController extends BaseController {
           default:
             log.warn(
               { intent: args.intent, userId: args.userId },
-              "Invalid intent received"
+              "Invalid intent received",
             );
-            return new BadRequestResponse(
-              errorMap.app.general.UNABLE_TO_PROCESS
-            );
+            return new JsonResponse({ data: new UserMapper().toDto(user) });
         }
     } catch (error) {
       this.logError(error, {
