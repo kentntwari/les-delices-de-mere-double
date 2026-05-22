@@ -23,6 +23,7 @@ export type OrderModel = Prisma.OrderGetPayload<{
       include: {
         item: {
           select: {
+            id: true;
             title: true;
             unitPrice: true;
           };
@@ -98,6 +99,7 @@ export class OrderRepository implements IOrderRepository {
             include: {
               item: {
                 select: {
+                  id: true,
                   title: true,
                   unitPrice: true,
                 },
@@ -123,6 +125,7 @@ export class OrderRepository implements IOrderRepository {
             include: {
               item: {
                 select: {
+                  id: true,
                   title: true,
                   unitPrice: true,
                 },
@@ -431,27 +434,44 @@ export class OrderRepository implements IOrderRepository {
       let scopedDeliveryRepoWithComputedStates: DeliveryRepository;
 
       let itemsAdded: Omit<OrderItemModel, "item">[] = [];
+      let unknownItemsAdded: Omit<OrderItemModel, "item">[] = [];
 
       const currentOrder = await this.db.order.findUniqueOrThrow({
         where: { id: orderId },
       });
 
-      return await this.db.$transaction(async (tx) => {
-        data.items.map((item) =>
-          tx.menuItem
-            .findFirst({
-              where: { id: item.id },
-            })
-            .then((mi) => {
-              if (mi !== null)
-                itemsAdded.push({
-                  id: mi.id,
-                  orderId,
-                  quantity: item.quantity,
-                });
-            }),
-        );
+      await Promise.all(
+        data.items.map(async (item) => {
+          const mi = await this.db.menuItem.findUnique({
+            where: { id: item.id },
+          });
 
+          if (mi !== null)
+            itemsAdded.push({
+              id: mi.id,
+              orderId,
+              quantity: item.quantity,
+            });
+          else
+            unknownItemsAdded.push({
+              id: item.id,
+              orderId,
+              quantity: item.quantity,
+            });
+        }),
+      );
+
+      // TODO: Either keep the logs or add a separate mechanism to log these unknown items for manual review, but don't just silently ignore them
+      if (unknownItemsAdded.length > 0) {
+        console.log("=========================================");
+        console.log(
+          "Unknown items found during order update:",
+          JSON.stringify(unknownItemsAdded),
+        );
+        console.log("=========================================");
+      }
+
+      return await this.db.$transaction(async (tx) => {
         if (data.deliveryAddress)
           scopedDeliveryRepoWithComputedStates =
             await DeliveryRepository.create(tx, {
@@ -474,41 +494,35 @@ export class OrderRepository implements IOrderRepository {
               data.deliveryAddress.country.toUpperCase(),
             );
 
-        if (
-          !r?.valid &&
-          !currentOrder.deliveryAddressId &&
-          data.deliveryAddress
-        )
-          await tx.order.update({
-            where: { id: orderId },
-            data: {
-              items: {
-                deleteMany: {},
-                createMany: {
-                  data: itemsAdded.map((item) => ({
-                    orderId: item.orderId,
-                    menuItemId: item.id,
-                    quantity: item.quantity,
-                  })),
-                },
+        await tx.order.update({
+          where: { id: orderId },
+          data: {
+            items: {
+              deleteMany: {},
+              createMany: {
+                data: itemsAdded.map((item) => ({
+                  itemId: item.id,
+                  quantity: item.quantity,
+                })),
               },
-              ...(r?.address &&
-                currentOrder.deliveryAddressId && {
-                  deliveryAddress: {
-                    where: {
-                      id: currentOrder.deliveryAddressId,
-                    },
-                    update: {
-                      deliveryAddress: {
-                        connect: {
-                          id: r.address.id,
-                        },
+            },
+            ...(r?.address &&
+              currentOrder.deliveryAddressId && {
+                deliveryAddress: {
+                  where: {
+                    id: currentOrder.deliveryAddressId,
+                  },
+                  update: {
+                    deliveryAddress: {
+                      connect: {
+                        id: r.address.id,
                       },
                     },
                   },
-                }),
-            },
-          });
+                },
+              }),
+          },
+        });
 
         const order = await this.get(orderId);
 
@@ -524,6 +538,7 @@ export class OrderRepository implements IOrderRepository {
         return order;
       });
     } catch (error) {
+      if (error instanceof DatabaseError) throw error;
       throw new DatabaseError(RepositoryFailuresMessages.updateOrder, {
         operation: "update",
         orderId,
