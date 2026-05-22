@@ -14,7 +14,7 @@ type TMenuItemDTO = TMenuSchema["items"][number];
 type TCreatedItemDTO = TCreateItemSchema;
 type TUpdateItemDTO = Partial<Omit<TUpdateItemSchema, "id">> & { id: string };
 export class ItemFactory extends BaseFactory<TMenuItemDTO, MenuItemEntity> {
-  protected build(data: TMenuItemDTO): MenuItemEntity {
+  public build(data: TMenuItemDTO): MenuItemEntity {
     return new MenuItemEntity(data.id, data.title, data.slug, data.unitPrice);
   }
 
@@ -36,7 +36,7 @@ export class ItemFactory extends BaseFactory<TMenuItemDTO, MenuItemEntity> {
 
   public validate(data: unknown): TMenuItemDTO {
     try {
-     const parsedData = menuSchema.shape.items.element.safeParse(data);
+      const parsedData = menuSchema.shape.items.element.safeParse(data);
       if (parsedData.success) return parsedData.data;
       throw new ApplicationError("Validation failed", {
         issues: JSON.stringify(parsedData.error.issues),
@@ -56,7 +56,7 @@ export class ItemFactory extends BaseFactory<TMenuItemDTO, MenuItemEntity> {
         );
     }
   }
- 
+
   static validateCreateItem(data: unknown): TCreatedItemDTO {
     const parsedData = createItemSchema.safeParse(data);
     if (parsedData.success) return parsedData.data;

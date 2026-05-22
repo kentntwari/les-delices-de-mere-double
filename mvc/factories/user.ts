@@ -8,13 +8,13 @@ import { UserEntity } from "../entities/user";
 import { ApplicationError } from "../errors.appwide";
 
 export class UserFactory extends BaseFactory<TUserDTO, UserEntity> {
-  protected build(data: Partial<TUserDTO>): UserEntity {
+  public build(data: Partial<TUserDTO>): UserEntity {
     return new UserEntity(
       data.id ?? crypto.randomUUID(),
       data.firstName || "",
       data.lastName || "",
       data.email || "",
-      "USER"
+      "USER",
     );
   }
 
@@ -37,7 +37,7 @@ export class UserFactory extends BaseFactory<TUserDTO, UserEntity> {
             originalError: JSON.stringify(error),
             input: JSON.stringify(data),
             source: "mvc.factories.user.UserFactory.validate",
-          }
+          },
         );
     }
   }

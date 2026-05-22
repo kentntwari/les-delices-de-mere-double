@@ -7,7 +7,7 @@ import {
 import { ApplicationError } from "../errors.appwide";
 
 export class CustomerFactory extends BaseFactory<TCustomerDTO, CustomerEntity> {
-  protected build(data: TCustomerDTO): CustomerEntity {
+  public build(data: TCustomerDTO): CustomerEntity {
     return new CustomerEntity(
       data.id,
       data.fullName,

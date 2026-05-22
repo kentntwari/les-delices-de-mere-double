@@ -17,7 +17,7 @@ type TCreateOrderDTO = TCreateOrderFormSchema;
 type TUpdateOrderDTO = TUpdateOrderFormSchema;
 
 export class OrderFactory extends BaseFactory<TOrderDTO, OrderEntity> {
-  protected build(data: TOrderDTO): OrderEntity {
+  public build(data: TOrderDTO): OrderEntity {
     return new OrderEntity(
       data.id,
       data.customerId,
