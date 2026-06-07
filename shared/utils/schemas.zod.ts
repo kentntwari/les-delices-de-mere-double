@@ -196,6 +196,7 @@ export type THandleOrderIntentsSchema = z.infer<
 >;
 export const handleOrderIntentsSchema = z.enum([
   "get-comments",
+  "create-comment",
   "get-logs",
   "get-order-customer",
   "get-order-count-metadata",

@@ -69,6 +69,11 @@ export const RepositoryFailuresMessages = {
 
 export interface IOrderRepository extends IBaseRepository<OrderModel> {
   getComments(orderId: string): Promise<OrderCommentModel[]>;
+  createComment(
+    orderId: string,
+    comment: string,
+    userId: string,
+  ): Promise<OrderCommentModel>;
   getLogs(orderId: string): Promise<OrderLogModel[]>;
   getDeliveryDetails(
     orderId: string,
@@ -147,6 +152,8 @@ export class OrderRepository implements IOrderRepository {
     try {
       return await this.db.orderComment.findMany({
         where: { orderId },
+        orderBy: { createdAt: "asc" },
+        take: 10,
         include: {
           user: {
             select: {
@@ -158,6 +165,31 @@ export class OrderRepository implements IOrderRepository {
     } catch (error) {
       throw new DatabaseError(RepositoryFailuresMessages.getComments, {
         operation: "getComments",
+        orderId,
+        error,
+      });
+    }
+  }
+
+  async createComment(orderId: string, comment: string, userId: string) {
+    try {
+      return await this.db.orderComment.create({
+        data: {
+          comment,
+          orderId,
+          userId,
+        },
+        include: {
+          user: {
+            select: {
+              name: true,
+            },
+          },
+        },
+      });
+    } catch (error) {
+      throw new DatabaseError("Failed to create order comment in database", {
+        operation: "createComment",
         orderId,
         error,
       });
