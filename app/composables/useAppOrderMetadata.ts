@@ -12,6 +12,33 @@ export function useAppOrderMetadata(
   cacheMap: OrderMetadataMap,
 ) {
   const previewedMetadata = shallowRef<TPreviewedOrderMetadata>();
+  const { normalizeProvince } = useAppProvinces();
+
+  type TDeliveryAddressLike =
+    | {
+        street: string;
+        city: string;
+        postalCode: string;
+        country?: string;
+        province?: string;
+        state?: string;
+      }
+    | null
+    | undefined;
+
+  function sanitizeDeliveryAddress(
+    address: TDeliveryAddressLike,
+  ): TPreviewedOrderMetadata["delivery"]["address"] {
+    if (!address) return null;
+
+    return {
+      street: address.street,
+      city: address.city,
+      province: normalizeProvince(address.state ?? address.province),
+      postalCode: address.postalCode,
+      country: "Canada",
+    };
+  }
 
   function increaseLogsCount() {
     if (!previewedMetadata.value) return;
@@ -46,7 +73,7 @@ export function useAppOrderMetadata(
     const placeholderDeliveryObj = {
       isRequested: currentDefault?.delivery?.isRequested ?? false,
       fee: currentDefault?.delivery?.fee || "?",
-      address: currentDefault?.delivery?.address || null,
+      address: sanitizeDeliveryAddress(currentDefault?.delivery?.address),
     } satisfies TPreviewedOrderMetadata["delivery"];
 
     try {
@@ -90,28 +117,9 @@ export function useAppOrderMetadata(
           : deliveryResult.data.fee
         : "0.00";
 
-      const b = deliveryResult.data.address;
-
-      const resolveAddress = deliveryResult.data.address
-        ? ({
-            ...deliveryResult.data.address,
-            province:
-              "state" in deliveryResult.data.address
-                ? deliveryResult.data.address.state
-                : deliveryResult.data.address.province,
-            country: "Canada",
-          } satisfies TPreviewedOrderMetadata["delivery"]["address"])
-        : null;
-
-      // Update cache once with all resolved data
-      cacheMap.set(`order-metadata__${orderId.value}`, {
-        count: countResult.data ?? { comments: "?", items: "?", logs: "?" },
-        delivery: {
-          isRequested: deliveryResult.data.isRequested,
-          fee: resolveDeliveryFee,
-          address: resolveAddress,
-        },
-      });
+      const resolveAddress = sanitizeDeliveryAddress(
+        deliveryResult.data.address,
+      );
 
       previewedMetadata.value = {
         ...previewedMetadata.value,
@@ -126,6 +134,16 @@ export function useAppOrderMetadata(
           address: resolveAddress,
         },
       };
+
+      // Update cache once with all resolved data
+      cacheMap.set(`order-metadata__${orderId.value}`, {
+        count: countResult.data ?? { comments: "?", items: "?", logs: "?" },
+        delivery: {
+          isRequested: deliveryResult.data.isRequested,
+          fee: resolveDeliveryFee,
+          address: resolveAddress,
+        },
+      });
     } catch (error) {
       previewedMetadata.value = {
         ...previewedMetadata.value,
