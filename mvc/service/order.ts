@@ -4,11 +4,12 @@ import { OrderMapper } from "../mapper/order";
 import { OrderLogsRepository } from "../repository/logs";
 import { OrderTransformer } from "../transformers/order";
 import { createLogger } from "../../server/utils/logger";
-import { ApplicationError } from "../errors.appwide";
-import { OrderFactory } from "../factories/order";
 import { tryHealthCheck } from "../../server/utils/db";
+import { OrderFactory } from "../factories/order";
+import { ApplicationError, NotFoundError } from "../errors.appwide";
 import { CustomerService } from "./customer";
 import { UserService } from "./user";
+import { DateUtils } from "~~/shared/utils/date";
 
 const log = createLogger("mvc.service.order");
 
@@ -59,13 +60,14 @@ export class OrderService extends BaseService {
 
   async read(orderId: string) {
     const order = await this.repository.get(orderId);
+
     if (!order)
-      throw new ApplicationError("Order not found", {
+      throw new NotFoundError("Order not found", {
         operation: "service.order.read",
         orderId,
       });
 
-    return order;
+    return this.mapper.toEntity(order);
   }
 
   async resolveCustomerForOrder(orderId: string) {
@@ -74,7 +76,7 @@ export class OrderService extends BaseService {
         await this.repository.getCustomerIdFromOrderId(orderId);
 
       if (!customerId)
-        throw new ApplicationError("Customer not found for order", {
+        throw new NotFoundError("Customer not found for order", {
           operation: "service.order.resolveCustomerForOrder",
           orderId,
         });
@@ -340,6 +342,20 @@ export class OrderService extends BaseService {
               "Failed to create order log (best-effort)",
             );
           });
+    }
+  }
+
+  async getTimeline(
+    orderId: string,
+  ): Promise<{ createdAt: string; updatedAt: string }> {
+    try {
+      const order = await this.repository.getTimeline(orderId);
+      return {
+        createdAt: DateUtils.convertDate(order.createdAt),
+        updatedAt: DateUtils.convertDate(order.updatedAt),
+      };
+    } catch (error) {
+      return { createdAt: "", updatedAt: "" };
     }
   }
 }
