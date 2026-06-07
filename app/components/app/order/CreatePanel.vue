@@ -296,7 +296,9 @@
               street: values.delivery?.address?.street,
               city: values.delivery?.address?.city,
               postalCode: values.delivery?.address?.postalCode,
-              province: "Quebec",
+              province: useAppProvinces().normalizeProvince(
+                values.delivery?.address?.province,
+              ),
               country: "Canada",
             },
           },
@@ -449,10 +451,16 @@
               :data="
                 values.delivery as Partial<TCreateOrderFormSchema['delivery']>
               "
-              @update:delivery="deliveryActions.setDeliveryRequired($event)"
               @update:home-address="deliveryActions.setHomeAddress($event)"
               v-else-if="currentStep === steps['delivery-instructions']"
-            />
+            >
+              <LazyAppOrderDeliverySelectOptions
+                :default="
+                  values.delivery?.isRequired ? 'does-request' : 'no-delivery'
+                "
+                @update:delivery="deliveryActions.setDeliveryRequired($event)"
+              />
+            </AppOrderCreatePanelDeliveryInstructions>
 
             <AppOrderCreatePanelPreview
               :ordered-items="values.items || []"
