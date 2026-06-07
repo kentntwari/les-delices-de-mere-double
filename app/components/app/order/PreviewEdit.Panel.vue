@@ -139,6 +139,11 @@
     previewedTab,
   );
 
+  const chat = useOrderChat(
+    computed(() => currentPreviewedOrder.value?.id),
+    previewedTab,
+  );
+
   const customer = useAsyncState(store.fetchRelatedCustomer, null, {
     immediate: false,
   });
@@ -814,7 +819,16 @@
               </div>
             </div>
           </UITabsContent>
-          <UITabsContent :value="'comments'"> </UITabsContent>
+          <UITabsContent :value="'comments'">
+            <AppOrderComments
+              :comments="chat.comments.value"
+              :is-loading="chat.isLoading.value"
+              :is-sending="chat.isSending.value"
+              :has-reached-limit="chat.hasReachedLimit.value"
+              :error="chat.error.value"
+              @send="chat.sendComment"
+            />
+          </UITabsContent>
           <UITabsContent :value="'logs'">
             <AppSkeletonTwoLines v-if="logs.isLoading.value" />
             <LazyAppOrderLogs v-else :logs="logs.state.value" />
