@@ -75,6 +75,29 @@ export const orderSchema = z.object({
   total: z.string(),
 });
 
+export type TOrderCommentSchema = z.infer<typeof orderCommentSchema>;
+export const orderCommentSchema = z.object({
+  id: z.string(),
+  orderId: z.string().min(1, "Order ID is required"),
+  comment: z
+    .string()
+    .min(10, "Comment must be at least 10 characters long")
+    .max(500, "Comment cannot exceed 500 characters"),
+  createdAt: z.string(),
+});
+
+export type TCreateOrderCommentSchema = z.infer<
+  typeof createOrderCommentSchema
+>;
+export const createOrderCommentSchema = orderCommentSchema
+  .omit({ id: true })
+  .extend({
+    userId: z
+      .string()
+      .min(1, "User ID is required to create a comment")
+      .optional(),
+  });
+
 const digitsOnly = (val: string) => val.replace(/\D/g, "");
 export const phoneNumberSchema = z.object({
   countryCode: z
@@ -196,7 +219,6 @@ export type THandleOrderIntentsSchema = z.infer<
 >;
 export const handleOrderIntentsSchema = z.enum([
   "get-comments",
-  "create-comment",
   "get-logs",
   "get-order-customer",
   "get-order-count-metadata",

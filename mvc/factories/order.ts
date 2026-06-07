@@ -1,10 +1,14 @@
 import {
   type TOrderSchema,
+  type TOrderCommentSchema,
   type TCreateOrderFormSchema,
   type TUpdateOrderFormSchema,
+  type TCreateOrderCommentSchema,
   orderSchema,
   createOrderFormSchema,
   updateOrderFormSchema,
+  orderCommentSchema,
+  createOrderCommentSchema,
 } from "../../shared/utils/schemas.zod";
 
 import { BaseFactory } from "./base";
@@ -15,6 +19,7 @@ import { ApplicationError } from "../errors.appwide";
 type TOrderDTO = Omit<TOrderSchema, "total"> & { customerId: string };
 type TCreateOrderDTO = TCreateOrderFormSchema;
 type TUpdateOrderDTO = TUpdateOrderFormSchema;
+type TCreateOrderCommentDTO = TCreateOrderCommentSchema;
 
 export class OrderFactory extends BaseFactory<TOrderDTO, OrderEntity> {
   public build(data: TOrderDTO): OrderEntity {
@@ -113,6 +118,29 @@ export class OrderFactory extends BaseFactory<TOrderDTO, OrderEntity> {
             originalError: error,
             input: data,
             source: "mvc.factories.order.OrderFactory.validateUpdateOrder",
+          },
+        );
+    }
+  }
+
+  public validateCreateComment(data: unknown): TCreateOrderCommentDTO {
+    try {
+      const parsedData = createOrderCommentSchema.safeParse(data);
+      if (parsedData.success) return parsedData.data;
+      throw new ApplicationError("Validation failed", {
+        issues: parsedData.error.issues,
+        input: JSON.stringify(data),
+        source: "mvc.factories.order.OrderFactory.validateCreateComment",
+      });
+    } catch (error) {
+      if (error instanceof ApplicationError) throw error;
+      else
+        throw new ApplicationError(
+          "Unknown error occurred during validation of create order comment",
+          {
+            originalError: error,
+            input: data,
+            source: "mvc.factories.order.OrderFactory.validateCreateComment",
           },
         );
     }
