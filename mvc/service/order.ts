@@ -121,6 +121,29 @@ export class OrderService extends BaseService {
     }
   }
 
+  async createComment(orderId: string, comment: string, userId: string) {
+    try {
+      const count = await this.repository.countComments(orderId);
+      if (count >= 10) {
+        throw new ApplicationError("Comment limit reached", {
+          operation: "service.order.createComment",
+          orderId,
+          currentCount: count,
+        });
+      }
+
+      const model = await this.repository.createComment(
+        orderId,
+        comment,
+        userId,
+      );
+      return this.mapper.toCommentEntity(model);
+    } catch (error) {
+      this.defaultMapError(error, "service.order.createComment");
+      throw error;
+    }
+  }
+
   async listLogs(orderId: string) {
     try {
       const model = await this.repository.getLogs(orderId);

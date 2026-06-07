@@ -120,6 +120,14 @@ export class OrderController extends BaseController {
     | InternalServerErrorResponse
   >;
   async handleIntent(
+    intent: "create-comment",
+    orderId: string,
+  ): Promise<
+    | JsonResponse<{ data: TOrderCommentDTO }>
+    | BadRequestResponse
+    | InternalServerErrorResponse
+  >;
+  async handleIntent(
     intent: "get-logs",
     orderId: string,
   ): Promise<
@@ -197,6 +205,7 @@ export class OrderController extends BaseController {
   ): Promise<
     | JsonResponse<{ data: TOrderDTO }>
     | JsonResponse<{ data: TOrderCommentDTO[] }>
+    | JsonResponse<{ data: TOrderCommentDTO }>
     | JsonResponse<{ data: TOrderLogDTO[] }>
     | JsonResponse<{ data: { id: string } }>
     | JsonResponse<{
@@ -228,6 +237,46 @@ export class OrderController extends BaseController {
           });
           return this.mapErrorResponse(error, {
             origin: "controllers.order.handleIntent.get-comments",
+            orderId,
+          });
+        }
+      }
+
+      case "create-comment": {
+        try {
+          const body = (await this.getBody()) as {
+            comment?: string;
+            userId?: string;
+          };
+
+          if (
+            !body ||
+            typeof body.comment !== "string" ||
+            !body.comment.trim()
+          ) {
+            return new BadRequestResponse("Comment text is required");
+          }
+
+          if (!body.userId || typeof body.userId !== "string") {
+            return new BadRequestResponse("User ID is required");
+          }
+
+          const entity = await this.service.createComment(
+            orderId,
+            body.comment.trim(),
+            body.userId,
+          );
+
+          return new JsonResponse({
+            data: this.mapper.toCommentDto(entity),
+          });
+        } catch (error) {
+          this.logError(error, {
+            origin: "controllers.order.handleIntent.create-comment",
+            orderId,
+          });
+          return this.mapErrorResponse(error, {
+            origin: "controllers.order.handleIntent.create-comment",
             orderId,
           });
         }
