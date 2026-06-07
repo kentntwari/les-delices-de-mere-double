@@ -10,10 +10,10 @@
     defineProps<
       SelectTriggerProps & {
         class?: HTMLAttributes["class"];
-        size?: "sm" | "default";
+        size?: "xs" | "sm" | "default";
       }
     >(),
-    { size: "default" }
+    { size: "default" },
   );
 
   const delegatedProps = reactiveOmit(props, "class", "size");
@@ -27,8 +27,8 @@
     v-bind="forwardedProps"
     :class="
       cn(
-        'border-input focus-visible:border-neutral-grey-500 focus-visible:ring-neutral-grey-500/50 flex w-fit items-center justify-between gap-2 rounded-md border bg-transparent px-3 py-2 text-sm whitespace-nowrap shadow-xs transition-[color,box-shadow] outline-none focus-visible:ring-[3px] disabled:cursor-not-allowed disabled:opacity-50 data-[size=default]:h-9 data-[size=sm]:h-8 *:data-[slot=select-value]:line-clamp-1 *:data-[slot=select-value]:flex *:data-[slot=select-value]:items-center *:data-[slot=select-value]:gap-2 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*=\'size-\'])]:size-4',
-        props.class
+        'border-input focus-visible:border-neutral-grey-500 focus-visible:ring-neutral-grey-500/50 flex w-fit items-center justify-between gap-2 rounded-md border bg-transparent px-3 py-2 text-sm whitespace-nowrap shadow-xs transition-[color,box-shadow] outline-none focus-visible:ring-[3px] disabled:cursor-not-allowed disabled:opacity-50 data-[size=default]:h-9 data-[size=sm]:h-8 data-[size=xs]:h-7 *:data-[slot=select-value]:line-clamp-1 *:data-[slot=select-value]:flex *:data-[slot=select-value]:items-center *:data-[slot=select-value]:gap-2 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*=\'size-\'])]:size-4',
+        props.class,
       )
     "
   >
