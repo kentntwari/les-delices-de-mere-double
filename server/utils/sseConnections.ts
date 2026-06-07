@@ -1,24 +1,28 @@
-import type { H3Event } from "h3";
 import type { TOrderCommentDTO } from "~~/mvc/mapper/order";
 
-type SSEWriter = {
-  write: (data: string) => void;
-  close: () => void;
+type EventStreamLike = {
+  push(message: string): Promise<void>;
 };
 
-const orderSSEConnections = new Map<string, Set<SSEWriter>>();
+const orderSSEConnections = new Map<string, Set<EventStreamLike>>();
 
-export function addSSEConnection(orderId: string, writer: SSEWriter): void {
+export function addSSEConnection(
+  orderId: string,
+  stream: EventStreamLike,
+): void {
   if (!orderSSEConnections.has(orderId)) {
     orderSSEConnections.set(orderId, new Set());
   }
-  orderSSEConnections.get(orderId)!.add(writer);
+  orderSSEConnections.get(orderId)!.add(stream);
 }
 
-export function removeSSEConnection(orderId: string, writer: SSEWriter): void {
+export function removeSSEConnection(
+  orderId: string,
+  stream: EventStreamLike,
+): void {
   const connections = orderSSEConnections.get(orderId);
   if (connections) {
-    connections.delete(writer);
+    connections.delete(stream);
     if (connections.size === 0) {
       orderSSEConnections.delete(orderId);
     }
@@ -32,12 +36,10 @@ export function broadcastComment(
   const connections = orderSSEConnections.get(orderId);
   if (!connections) return;
 
-  const payload = `data: ${JSON.stringify(comment)}\n\n`;
-  for (const writer of connections) {
-    try {
-      writer.write(payload);
-    } catch {
-      connections.delete(writer);
-    }
+  const payload = JSON.stringify(comment);
+  for (const stream of connections) {
+    stream.push(payload).catch(() => {
+      connections.delete(stream);
+    });
   }
 }

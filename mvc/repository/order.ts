@@ -69,7 +69,6 @@ export const RepositoryFailuresMessages = {
 
 export interface IOrderRepository extends IBaseRepository<OrderModel> {
   getComments(orderId: string): Promise<OrderCommentModel[]>;
-  countComments(orderId: string): Promise<number>;
   createComment(
     orderId: string,
     comment: string,
@@ -166,20 +165,6 @@ export class OrderRepository implements IOrderRepository {
     } catch (error) {
       throw new DatabaseError(RepositoryFailuresMessages.getComments, {
         operation: "getComments",
-        orderId,
-        error,
-      });
-    }
-  }
-
-  async countComments(orderId: string) {
-    try {
-      return await this.db.orderComment.count({
-        where: { orderId },
-      });
-    } catch (error) {
-      throw new DatabaseError(RepositoryFailuresMessages.getComments, {
-        operation: "countComments",
         orderId,
         error,
       });
