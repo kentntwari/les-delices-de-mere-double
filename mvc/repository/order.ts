@@ -46,11 +46,12 @@ export type OrderItemModel = Prisma.OrderItemGetPayload<{
 
 export type OrderCommentModel = Prisma.OrderCommentGetPayload<{
   include: {
-    user: { select: { name: true } };
+    user: { select: { id: true; name: true } };
   };
-  orderId: true;
-  likedBy: true;
-  taggedUserId: true;
+  omit: {
+    likedBy: true;
+    userId: true;
+  };
 }>;
 
 export type OrderLogModel = Prisma.OrderLogGetPayload<{}>;
@@ -157,6 +158,7 @@ export class OrderRepository implements IOrderRepository {
         include: {
           user: {
             select: {
+              id: true,
               name: true,
             },
           },
@@ -171,9 +173,13 @@ export class OrderRepository implements IOrderRepository {
     }
   }
 
-  async createComment(orderId: string, comment: string, userId: string) {
+  async createComment(
+    orderId: string,
+    comment: string,
+    userId: string,
+  ): Promise<OrderCommentModel> {
     try {
-      return await this.db.orderComment.create({
+      const c = await this.db.orderComment.create({
         data: {
           comment,
           orderId,
@@ -182,11 +188,23 @@ export class OrderRepository implements IOrderRepository {
         include: {
           user: {
             select: {
+              id: true,
               name: true,
             },
           },
         },
       });
+
+      await this.db.orderComment.update({
+        where: { id: c.id },
+        data: {
+          user: {
+            connect: { id: userId },
+          },
+        },
+      });
+
+      return c;
     } catch (error) {
       throw new DatabaseError("Failed to create order comment in database", {
         operation: "createComment",

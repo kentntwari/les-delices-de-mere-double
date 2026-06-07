@@ -123,13 +123,16 @@ export class OrderService extends BaseService {
     }
   }
 
-  async createComment(orderId: string, comment: string, userId: string) {
+  async createComment(orderId: string, userId: string, data: unknown) {
     try {
+      const { comment, createdAt } = this.factory.validateCreateComment(data);
+
       const model = await this.repository.createComment(
         orderId,
         comment,
         userId,
       );
+      
       return this.mapper.toCommentEntity(model);
     } catch (error) {
       this.defaultMapError(error, "service.order.createComment");

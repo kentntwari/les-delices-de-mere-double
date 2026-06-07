@@ -27,8 +27,8 @@ export class OrderCommentEntity implements IOrderCommentEntity {
   constructor(
     public readonly id: string,
     public readonly comment: string,
+    public readonly orderId: string,
     public readonly userId: string | undefined,
-    public readonly userName: string | undefined,
     public readonly likedCount: number,
     public readonly createdAt: string,
   ) {}

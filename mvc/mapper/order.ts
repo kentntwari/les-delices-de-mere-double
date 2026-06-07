@@ -13,6 +13,7 @@ import type {
   OrderLogModel,
 } from "../repository/order";
 import type { TOrderSchema } from "../../shared/utils/schemas.zod";
+import type { UserEntity } from "../entities/user";
 
 export type TOrderDTO = TOrderSchema & {
   status: OrderEntity["status"];
@@ -23,7 +24,7 @@ export type TOrderLogDTO = Pick<OrderLogEntity, "message" | "createdAt">;
 
 export type TOrderCommentDTO = Pick<
   OrderCommentEntity,
-  "id" | "comment" | "userName" | "likedCount" | "createdAt"
+  "id" | "comment" | "likedCount" | "createdAt"
 >;
 
 export class OrderMapper extends BaseMapper<
@@ -151,26 +152,31 @@ export class OrderMapper extends BaseMapper<
     return entities.map((entity) => this.toLogDto(entity));
   }
 
-  toCommentEntity(data: OrderCommentModel): OrderCommentEntity {
+  toCommentEntity(
+    data: OrderCommentModel,
+    user?: UserEntity,
+  ): OrderCommentEntity {
     return new OrderCommentEntity(
       data.id,
       data.comment,
-      data.userId ?? undefined,
-      data.user?.name ?? undefined,
+      data.orderId,
+      user?.id ?? "UNKNOWN_USER_ID",
       data.likedCount,
       data.createdAt.toISOString(),
     );
   }
 
-  toCommentEntityList(data: OrderCommentModel[]): OrderCommentEntity[] {
-    return data.map((comment) => this.toCommentEntity(comment));
+  toCommentEntityList(
+    data: OrderCommentModel[],
+    user?: UserEntity,
+  ): OrderCommentEntity[] {
+    return data.map((comment) => this.toCommentEntity(comment, user));
   }
 
   toCommentDto(entity: OrderCommentEntity): TOrderCommentDTO {
     return {
       id: entity.id,
       comment: entity.comment,
-      userName: entity.userName,
       likedCount: entity.likedCount,
       createdAt: entity.createdAt,
     };

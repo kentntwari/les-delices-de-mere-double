@@ -9,6 +9,8 @@ import {
 } from "./base";
 
 import { OrderService } from "../service/order";
+import { UserService } from "../service/user";
+
 import {
   OrderMapper,
   type TOrderCommentDTO,
@@ -16,6 +18,7 @@ import {
   type TOrderLogDTO,
 } from "../mapper/order";
 import { OrderTransformer } from "../transformers/order";
+import type { IApiOrderCommentData } from "~~/shared/types";
 
 export class OrderController extends BaseController {
   protected originator_user_id: string = "UNKNOWN_USER_ID";
@@ -24,6 +27,7 @@ export class OrderController extends BaseController {
     req: Request,
     private service: OrderService = new OrderService(),
     private mapper: OrderMapper = new OrderMapper(),
+    private userService: UserService = new UserService(),
   ) {
     super(req);
   }
@@ -119,6 +123,48 @@ export class OrderController extends BaseController {
     }
   }
 
+  async createComment(orderId: string) {
+    try {
+      const user = await this.userService.readUser(this.originator_user_id);
+
+      if (!user) {
+        this.logError(new Error("User not found"), {
+          origin: "controllers.order.createComment",
+          orderId,
+          userId: this.originator_user_id,
+        });
+        return new BadRequestResponse("User not found");
+      }
+
+      const entity = await this.service.createComment(
+        orderId,
+        user.id,
+        await this.getBody(),
+      );
+
+      return new JsonResponse<{ data: IApiOrderCommentData }>({
+        data: {
+          id: entity.id,
+          comment: entity.comment,
+          _meta: {
+            likedCount: entity.likedCount,
+            createdBy: user.id,
+            createdAt: entity.createdAt,
+          },
+        },
+      });
+    } catch (error) {
+      this.logError(error, {
+        origin: "controllers.order.createComment",
+        orderId,
+      });
+      return this.mapErrorResponse(error, {
+        origin: "controllers.order.createComment",
+        orderId,
+      });
+    }
+  }
+
   async handleIntent(
     intent: "update-order",
     orderId: string,
@@ -132,14 +178,6 @@ export class OrderController extends BaseController {
     orderId: string,
   ): Promise<
     | JsonResponse<{ data: TOrderCommentDTO[] }>
-    | BadRequestResponse
-    | InternalServerErrorResponse
-  >;
-  async handleIntent(
-    intent: "create-comment",
-    orderId: string,
-  ): Promise<
-    | JsonResponse<{ data: TOrderCommentDTO }>
     | BadRequestResponse
     | InternalServerErrorResponse
   >;
@@ -231,7 +269,6 @@ export class OrderController extends BaseController {
   ): Promise<
     | JsonResponse<{ data: TOrderDTO }>
     | JsonResponse<{ data: TOrderCommentDTO[] }>
-    | JsonResponse<{ data: TOrderCommentDTO }>
     | JsonResponse<{ data: TOrderLogDTO[] }>
     | JsonResponse<{ data: { id: string } }>
     | JsonResponse<{
@@ -252,7 +289,9 @@ export class OrderController extends BaseController {
 
       case "get-comments": {
         try {
-          const comments = await this.service.listComments(orderId);
+          const comments = await this.service
+            .defineAuthor(this.originator_user_id)
+            .listComments(orderId);
           return new JsonResponse({
             data: this.mapper.toCommentDtoList(comments),
           });
@@ -263,46 +302,6 @@ export class OrderController extends BaseController {
           });
           return this.mapErrorResponse(error, {
             origin: "controllers.order.handleIntent.get-comments",
-            orderId,
-          });
-        }
-      }
-
-      case "create-comment": {
-        try {
-          const body = (await this.getBody()) as {
-            comment?: string;
-            userId?: string;
-          };
-
-          if (
-            !body ||
-            typeof body.comment !== "string" ||
-            !body.comment.trim()
-          ) {
-            return new BadRequestResponse("Comment text is required");
-          }
-
-          if (!body.userId || typeof body.userId !== "string") {
-            return new BadRequestResponse("User ID is required");
-          }
-
-          const entity = await this.service.createComment(
-            orderId,
-            body.comment.trim(),
-            body.userId,
-          );
-
-          return new JsonResponse({
-            data: this.mapper.toCommentDto(entity),
-          });
-        } catch (error) {
-          this.logError(error, {
-            origin: "controllers.order.handleIntent.create-comment",
-            orderId,
-          });
-          return this.mapErrorResponse(error, {
-            origin: "controllers.order.handleIntent.create-comment",
             orderId,
           });
         }

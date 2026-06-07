@@ -7,12 +7,24 @@ const log = createRequestLogger("server.api.order.[orderId].comments.get.ts");
 
 export default defineCachedEventHandler(
   async (event) => {
-    let id: string = "UNKNOWN_ORDER_ID";
-
     try {
-      const { orderId } = event.context.params as { orderId: string };
+      const userId = event.context.auth().userId;
 
-      id = orderId;
+      if (!userId) {
+        log.warn(
+          event.path,
+          event.method,
+          { userId },
+          "GET REQUEST Missing userId",
+        );
+
+        throw createError({
+          statusCode: 401,
+          statusMessage: "Not authenticated",
+        });
+      }
+
+      const { orderId } = event.context.params as { orderId: string };
 
       log.info(
         event.path,
@@ -23,10 +35,10 @@ export default defineCachedEventHandler(
         "GET REQUEST RECEIVED: Getting order comments",
       );
 
-      const r = await new OrderController(toWebRequest(event)).handleIntent(
-        "get-comments",
-        orderId,
-      );
+      const r = await new OrderController(toWebRequest(event))
+        .promoteUserId(userId)
+        .handleIntent("get-comments", orderId);
+
       return treatResponses(event, r);
     } catch (error) {
       treatErrors(error);
