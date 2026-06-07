@@ -123,15 +123,6 @@ export class OrderService extends BaseService {
 
   async createComment(orderId: string, comment: string, userId: string) {
     try {
-      const comments = await this.repository.getComments(orderId);
-      if (comments.length >= 10) {
-        throw new ApplicationError("Comment limit reached", {
-          operation: "service.order.createComment",
-          orderId,
-          currentCount: comments.length,
-        });
-      }
-
       const model = await this.repository.createComment(
         orderId,
         comment,

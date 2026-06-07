@@ -27,6 +27,23 @@ export default defineEventHandler(async (event) => {
       "POST REQUEST RECEIVED: Creating order comment",
     );
 
+    // Check comment limit at the API layer
+    const commentsResponse = await new OrderController(
+      toWebRequest(event),
+    ).handleIntent("get-comments", orderId);
+
+    if (commentsResponse instanceof JsonResponse) {
+      const comments = (
+        commentsResponse.data as { data: TOrderCommentDTO[] }
+      ).data;
+      if (comments.length >= 10) {
+        throw createError({
+          statusCode: 422,
+          statusMessage: "Comment limit reached",
+        });
+      }
+    }
+
     const body = await readBody(event);
 
     const enrichedRequest = new Request(toWebRequest(event).url, {

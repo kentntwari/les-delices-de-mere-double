@@ -40,7 +40,13 @@ export default defineEventHandler(async (event) => {
 
   addSSEConnection(orderId, eventStream);
 
+  // Send keepalive every 2000ms to maintain the connection
+  const interval = setInterval(async () => {
+    await eventStream.push(": keepalive");
+  }, 2000);
+
   eventStream.onClosed(async () => {
+    clearInterval(interval);
     removeSSEConnection(orderId, eventStream);
     await eventStream.close();
   });
