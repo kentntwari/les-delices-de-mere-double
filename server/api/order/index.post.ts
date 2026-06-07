@@ -14,7 +14,7 @@ export default defineEventHandler(async (event) => {
       "POST REQUEST RECEIVED: Creating order",
     );
 
-    const userId = event.context.auth.userId;
+    const userId = event.context.auth().userId;
 
     if (!userId) {
       log.warn(

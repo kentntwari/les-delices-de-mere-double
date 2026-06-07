@@ -4,7 +4,7 @@ import {
   handleOrderIntentsSchema,
   type THandleOrderIntentsSchema,
 } from "~~/shared/utils/schemas.zod";
-import { SilentSuccessResponse } from "~~/mvc/controllers/base";
+import { JsonResponse, SilentSuccessResponse } from "~~/mvc/controllers/base";
 
 const log = createRequestLogger("server.api.order.[orderId].index.put.ts");
 
@@ -12,7 +12,7 @@ const cache = new CacheUtil(useStorage("cache"));
 
 export default defineEventHandler(async (event) => {
   try {
-    const userId = event.context.auth.userId;
+    const userId = event.context.auth().userId;
 
     if (!userId) {
       log.warn(
@@ -75,7 +75,6 @@ export default defineEventHandler(async (event) => {
       );
 
     const validatedIntent = handleOrderIntentsSchema.safeParse(query.intent);
-
     if (!validatedIntent.success) {
       log.warn(
         event.path,
@@ -83,7 +82,6 @@ export default defineEventHandler(async (event) => {
         { param: { orderId }, query, validationError: validatedIntent.error },
         "PUT REQUEST INVALID intent value in query parameters",
       );
-
       throw createError({
         statusCode: 400,
         message: "Invalid intent value in query parameters",
@@ -94,7 +92,7 @@ export default defineEventHandler(async (event) => {
       .promoteUserId(userId)
       .handleIntent(validatedIntent.data, orderId);
 
-    if (r instanceof SilentSuccessResponse)
+    if (r instanceof SilentSuccessResponse || r instanceof JsonResponse)
       await Promise.all([
         cache
           .route("orders")

@@ -20,7 +20,7 @@ const cache = new CacheUtil(useStorage("cache"));
 
 export default defineEventHandler(async (event) => {
   try {
-    const userId = event.context.auth.userId;
+    const userId = event.context.auth().userId;
 
     if (!userId) {
       log.warn(
