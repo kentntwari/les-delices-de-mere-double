@@ -27,3 +27,17 @@ export class ApplicationError extends Error {
     log.error({ err: this, context, source }, message);
   }
 }
+
+export class NotFoundError extends Error {
+  constructor(
+    message: string,
+    public context: Record<string, unknown> = {},
+    public source: string = "controllers.base"
+  ) {
+    super(message);
+    this.name = "NOT FOUND ERROR";
+    this.context = context;
+    log.error({ err: this, context, source }, message);
+  }
+}
+
