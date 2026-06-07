@@ -10,6 +10,7 @@
     InfoIcon,
     PhoneIcon,
     MailIcon,
+    MapPinIcon,
     Trash2Icon,
     TriangleAlertIcon,
     PlusIcon,
@@ -52,6 +53,7 @@
     isEditing: ref(false),
     isCancelling: ref(false),
     isViewingCustomer: ref(false),
+    isEditingDeliveryAddress: ref(false),
     openPreview: () => (orderActions.isPreviewOpen.value = true),
     openEditor: () => (orderActions.isEditing.value = true),
     openCustomerInfo: () => (orderActions.isViewingCustomer.value = true),
@@ -60,6 +62,19 @@
     closeEditor: () => (orderActions.isEditing.value = false),
     stopCancelling: () => (orderActions.isCancelling.value = false),
     closeCustomerInfo: () => (orderActions.isViewingCustomer.value = false),
+    startEditingDeliveryAddress: () => {
+      orderActions.isEditingDeliveryAddress.value = true;
+    },
+    stopEditingDeliveryAddress: () => {
+      orderActions.isEditingDeliveryAddress.value = false;
+      popoverAddressKey.value = nanoid();
+    },
+    toggleEditingDeliveryAddress: () => {
+      if (orderActions.isEditingDeliveryAddress.value)
+        orderActions.stopEditingDeliveryAddress();
+      else orderActions.startEditingDeliveryAddress();
+      popoverAddressKey.value = nanoid();
+    },
     setDefaults: () => {
       setValues({
         ...values,
@@ -73,7 +88,7 @@
           address:
             previewedMetadata.value?.delivery.isRequested &&
             previewedMetadata.value.delivery.address
-              ? previewedMetadata.value.delivery.address
+              ? { ...previewedMetadata.value.delivery.address }
               : null,
         },
       });
@@ -83,16 +98,18 @@
       orderActions.openEditor();
     },
     cancelEditing: () => {
+      orderActions.stopEditingDeliveryAddress();
       orderActions.stopCancelling();
       orderActions.closeEditor();
       resetEditForm();
+      orderActions.setDefaults();
     },
     previewOrder: async () => {
       emits("set-order");
       await nextTick();
       previewedTab.value = "items";
       await nextTick();
-      store.getPreviewMetadata();
+      store.getPreviewMetadata().then(() => orderActions.setDefaults());
       orderActions.openPreview();
     },
     updateOrder: (payload: TUpdateOrderFormSchema) => {
@@ -115,6 +132,7 @@
 
   const alertPreviewKey = ref(nanoid());
   const popoverEditorKey = ref(nanoid());
+  const popoverAddressKey = ref(nanoid());
 
   const logs = useAppOrderLogs(
     computed(() => currentPreviewedOrder.value?.id),
@@ -170,10 +188,67 @@
     return (id: string) => values.items?.removed?.includes(id);
   });
 
+  function normalizeAddressField(value?: string | null) {
+    return value?.trim().toLocaleLowerCase() ?? "";
+  }
+
+  const isDeliveryAddressEdited = computed(() => {
+    ``;
+    if (!values.delivery) return false;
+
+    const originalAddress = previewedMetadata.value?.delivery.address;
+    const currentAddress = values.delivery.address;
+
+    if (!originalAddress) return false;
+    if (!currentAddress) return false;
+
+    if (
+      normalizeAddressField(originalAddress.street) !==
+      normalizeAddressField(currentAddress.street)
+    )
+      return true;
+
+    if (
+      normalizeAddressField(originalAddress.city) !==
+      normalizeAddressField(currentAddress.city)
+    )
+      return true;
+
+    if (
+      normalizeAddressField(originalAddress.province) !==
+      normalizeAddressField(currentAddress.province)
+    )
+      return true;
+
+    if (
+      normalizeAddressField(originalAddress.postalCode) !==
+      normalizeAddressField(currentAddress.postalCode)
+    )
+      return true;
+
+    if (
+      normalizeAddressField(originalAddress.country) !==
+      normalizeAddressField(currentAddress.country)
+    )
+      return true;
+
+    return false;
+  });
+
+  const shouldDisableEditBtn = computed(() => {
+    if (!currentPreviewedOrder.value) return true;
+    if (currentPreviewedOrder.value.paymentStatus === "PAID") return true;
+    if (currentPreviewedOrder.value.status === "COMPLETED") return true;
+
+    return false;
+  });
+
   const shouldDisableSaveEditsBtn = computed(() => {
     if (meta.value.valid === false) return true;
 
     if (!values.items) return true;
+
+    if (isDeliveryAddressEdited.value) return false;
 
     if (values.items.added!.length === 0 && values.items.removed!.length === 0)
       return true;
@@ -184,6 +259,8 @@
       values.items.current!.length === 0
     )
       return true;
+
+    return false;
   });
 
   const onSubmit = handleSubmit(async (v) => {
@@ -201,12 +278,7 @@
     <button
       :aria-label="`View order ${currentPreviewedOrder?.id || ''}`"
       class="w-full h-full p-4 flex items-center justify-between cursor-pointer"
-      @click="
-        () => {
-          orderActions.previewOrder();
-          orderActions.setDefaults();
-        }
-      "
+      @click="orderActions.previewOrder()"
     >
       <slot />
     </button>
@@ -239,8 +311,118 @@
           </UIButton>
         </div>
       </UIDialogHeader>
-      <section class="p-6 grid grid-rows-[1fr_auto] gap-y-6">
-        <header>
+      <section class="p-6 grid grid-rows-[auto_1fr_auto]">
+        <header class="space-y-8">
+          <div class="flex items-center justify-between">
+            <p
+              v-show="customer.state.value?.data"
+              class="text-base text-neutral-grey-1000"
+            >
+              {{
+                $t(
+                  "components.order.editor-panel.nested-header.delivery-title",
+                  {
+                    customerName: customer.state.value?.data?.fullName || "",
+                  },
+                )
+              }}
+            </p>
+            <p
+              v-show="!customer.state.value?.data && !customer.isLoading.value"
+              class="flex items-center text-base text-neutral-grey-1000"
+            >
+              <span class="-mt-1 text-orange-700"
+                ><TriangleAlertIcon :size="20" class="inline mr-1"
+              /></span>
+              <span class="text-orange-700">Unable to find customer name</span>
+            </p>
+
+            <div class="flex items-center gap-x-2">
+              <LazyAppOrderDeliverySelectOptions
+                :default="
+                  values.delivery?.isRequired ? 'does-request' : 'no-delivery'
+                "
+                @update:delivery="
+                  (hasRequestedDelivery) => {
+                    if (hasRequestedDelivery) {
+                      setValues({
+                        ...values,
+                        delivery: {
+                          ...values.delivery,
+                          isRequired: true,
+                        },
+                      });
+                    } else {
+                      setValues({
+                        ...values,
+                        delivery: {
+                          isRequired: false,
+                          address: null,
+                        },
+                      });
+                    }
+                  }
+                "
+              />
+
+              <UIPopover
+                v-model:open="orderActions.isEditingDeliveryAddress.value"
+              >
+                <UIPopoverAnchor as-child>
+                  <button
+                    v-show="values.delivery?.isRequired"
+                    :aria-label="`Edit delivery address for order ${currentPreviewedOrder?.id || ''}`"
+                    @click="orderActions.toggleEditingDeliveryAddress()"
+                  >
+                    <MapPinIcon
+                      :size="24"
+                      :stroke-width="1.5"
+                      class="text-neutral-grey-900 cursor-pointer"
+                    />
+                  </button>
+                </UIPopoverAnchor>
+
+                <UIPopoverContent
+                  :key="popoverAddressKey"
+                  :align="'end'"
+                  :align-offset="0"
+                  :side-offset="15"
+                  class="min-w-[400px] space-y-6"
+                  @escape-key-down="$event.preventDefault()"
+                  @interact-outside="$event.preventDefault()"
+                >
+                  <h3 class="font-medium text-neutral-grey-1300">
+                    Edit delivery address
+                  </h3>
+                  <LazyAppOrderDeliveryEditAddress
+                    v-if="values.delivery?.isRequired"
+                    :defaults="{
+                      street: values.delivery?.address?.street || '',
+                      city: values.delivery?.address?.city || '',
+                      province: values.delivery?.address?.province || '',
+                      postalCode: values.delivery?.address?.postalCode || '',
+                      country: 'Canada',
+                    }"
+                    @cancel="orderActions.stopEditingDeliveryAddress()"
+                    @submit="
+                      (address) => {
+                        setValues({
+                          ...values,
+                          delivery: {
+                            ...values.delivery,
+                            address,
+                          },
+                        });
+                        orderActions.stopEditingDeliveryAddress();
+                      }
+                    "
+                    class="gap-y-4"
+                  />
+                </UIPopoverContent>
+              </UIPopover>
+            </div>
+          </div>
+
           <div class="flex items-center justify-between">
             <p aria-roledescription="total-ticker-count">
               {{
@@ -262,155 +444,164 @@
               }}</span>
             </p>
           </div>
-          <ul class="mt-6 space-y-2">
-            <li
-              v-for="(item, index) in currentPreviewedOrder?.items"
-              :key="item.id"
-              class="flex items-center"
-              :class="[
-                isRemoved(item.id) &&
-                  '*:first:block relative opacity-50 before:absolute before:w-full before:h-px before:bg-neutral-grey-900 pointer-events-none',
-              ]"
-            >
-              <AppOrderPreviewEditPill :type="'preview'" :current-item="item" />
-
-              <button
-                class="cursor-pointer"
-                @click="
-                  values.items &&
-                  setValues({
-                    ...values,
-                    items: {
-                      ...values.items,
-                      current: values.items.current?.filter(
-                        (_, i) => i !== index,
-                      ),
-                      removed: [...values.items.removed!, item.id],
-                    },
-                  })
-                "
-                values.items.removed
-                &&
-                v-if="!isRemoved(item.id)"
-              >
-                <Trash2Icon
-                  :size="24"
-                  class="text-red-900 hover:text-red-700 transition-colors"
-                />
-              </button>
-            </li>
-            <li
-              v-for="(addedItem, index) in values.items?.added || []"
-              :key="addedItem.id"
-            >
-              <AppOrderPreviewEditPill
-                :type="'edit'"
-                :current-item="addedItem"
-                :menu-items="menuItems?.data.items || []"
-                class="*:first:bg-accent-one-500 *:data-[slot=select-trigger]:bg-neutral-grey-100 rounded-sm"
-                @update-quantity="
-                  (q) =>
-                    setValues({
-                      ...values,
-                      items: {
-                        ...values.items,
-                        added: values.items?.added?.map((item, i) =>
-                          i === index ? { ...item, quantity: q } : item,
-                        ),
-                      },
-                    })
-                "
-                @select-item="
-                  (item: TMenuSchema['items'][number]) =>
-                    setValues({
-                      ...values,
-                      items: {
-                        ...values.items,
-                        added: values.items?.added?.map((added, i) =>
-                          i === index
-                            ? {
-                                ...added,
-                                id: item.id,
-                                title: item.title,
-                                unitPrice: item.unitPrice,
-                              }
-                            : added,
-                        ),
-                      },
-                    })
-                "
-              >
-                <template #delete>
-                  <button
-                    class="cursor-pointer"
-                    @click="
-                      setValues({
-                        ...values,
-                        items: {
-                          ...values.items,
-                          added: values.items?.added?.filter(
-                            (_, i) => i !== index,
-                          ),
-                        },
-                      })
-                    "
-                  >
-                    <MinusIcon
-                      :size="24"
-                      class="text-red-900 hover:text-red-700 transition-colors"
-                    />
-                  </button>
-                </template>
-              </AppOrderPreviewEditPill>
-            </li>
-            <li v-if="totalItemsCount < 7">
-              <button
-                type="button"
-                class="w-full lg:h-12 flex items-center justify-center gap-x-1 outline-2 outline-dashed outline-neutral-grey-700 hover:outline-neutral-grey-800 transition-colors duration-150 uppercase text-sm rounded-md cursor-pointer"
-                @click="
-                  setValues({
-                    ...values,
-                    items: {
-                      ...values.items,
-                      added: [
-                        ...(values.items?.added || []),
-                        {
-                          id: nanoid(),
-                          title: '',
-                          quantity: 1,
-                          unitPrice: 0,
-                        },
-                      ],
-                    },
-                  })
-                "
-              >
-                <span class="block">
-                  <PlusIcon :size="16" />
-                </span>
-                <span class="block">
-                  {{
-                    $t(
-                      "components.order.create-panel.items-list.button-add-items",
-                    )
-                  }}
-                </span>
-              </button>
-            </li>
-
-            <li
-              v-show="totalItemsCount === 7"
-              class="w-full mt-2 font-regular text-sm text-orange-700 flex items-center gap-x-1"
-            >
-              <span class="inline-block"><TriangleAlertIcon :size="16" /></span>
-              <span class="inline-block"
-                >You can only add up to 7 items per order</span
-              >
-            </li>
-          </ul>
         </header>
+        <ul class="my-6 space-y-2">
+          <li
+            v-for="(item, index) in currentPreviewedOrder?.items"
+            :key="item.id"
+            class="flex items-center"
+            :class="[
+              isRemoved(item.id) &&
+                '*:first:block relative opacity-50 before:absolute before:w-full before:h-px before:bg-neutral-grey-900 pointer-events-none',
+            ]"
+          >
+            <AppOrderPreviewEditPill :type="'preview'" :current-item="item" />
+
+            <button
+              class="cursor-pointer"
+              @click="
+                values.items &&
+                setValues({
+                  ...values,
+                  items: {
+                    ...values.items,
+                    current: values.items.current?.filter(
+                      (_, i) => i !== index,
+                    ),
+                    removed: [...values.items.removed!, item.id],
+                  },
+                })
+              "
+              values.items.removed
+              &&
+              v-if="!isRemoved(item.id)"
+            >
+              <Trash2Icon
+                :size="24"
+                class="text-red-900 hover:text-red-700 transition-colors"
+              />
+            </button>
+          </li>
+          <li
+            v-for="(addedItem, index) in values.items?.added || []"
+            :key="addedItem.id"
+          >
+            <AppOrderPreviewEditPill
+              :type="'edit'"
+              :current-item="addedItem"
+              :menu-items="menuItems?.data.items || []"
+              class="*:first:bg-accent-one-500 *:data-[slot=select-trigger]:bg-neutral-grey-100 rounded-sm"
+              @update-quantity="
+                (q) =>
+                  setValues({
+                    ...values,
+                    items: {
+                      ...values.items,
+                      added: values.items?.added?.map((item, i) =>
+                        i === index ? { ...item, quantity: q } : item,
+                      ),
+                    },
+                  })
+              "
+              @select-item="
+                (item: TMenuSchema['items'][number]) =>
+                  setValues({
+                    ...values,
+                    items: {
+                      ...values.items,
+                      added: values.items?.added?.map((added, i) =>
+                        i === index
+                          ? {
+                              ...added,
+                              id: item.id,
+                              title: item.title,
+                              unitPrice: item.unitPrice,
+                            }
+                          : added,
+                      ),
+                    },
+                  })
+              "
+            >
+              <template #delete>
+                <button
+                  class="cursor-pointer"
+                  @click="
+                    setValues({
+                      ...values,
+                      items: {
+                        ...values.items,
+                        added: values.items?.added?.filter(
+                          (_, i) => i !== index,
+                        ),
+                      },
+                    })
+                  "
+                >
+                  <MinusIcon
+                    :size="24"
+                    class="text-red-900 hover:text-red-700 transition-colors"
+                  />
+                </button>
+              </template>
+            </AppOrderPreviewEditPill>
+          </li>
+          <li v-if="totalItemsCount < 7">
+            <button
+              type="button"
+              class="w-full lg:h-12 flex items-center justify-center gap-x-1 outline-2 outline-dashed outline-neutral-grey-700 hover:outline-neutral-grey-800 transition-colors duration-150 uppercase text-sm rounded-md cursor-pointer"
+              @click="
+                setValues({
+                  ...values,
+                  items: {
+                    ...values.items,
+                    added: [
+                      ...(values.items?.added || []),
+                      {
+                        id: nanoid(),
+                        title: '',
+                        quantity: 1,
+                        unitPrice: 0,
+                      },
+                    ],
+                  },
+                })
+              "
+            >
+              <span class="block">
+                <PlusIcon :size="16" />
+              </span>
+              <span class="block">
+                {{
+                  $t(
+                    "components.order.create-panel.items-list.button-add-items",
+                  )
+                }}
+              </span>
+            </button>
+          </li>
+
+          <li
+            v-show="totalItemsCount === 7"
+            class="w-full mt-2 font-regular text-sm text-orange-700 flex items-center gap-x-1"
+          >
+            <span class="inline-block"><TriangleAlertIcon :size="16" /></span>
+            <span class="inline-block"
+              >You can only add up to 7 items per order</span
+            >
+          </li>
+        </ul>
         <footer>
           <div>
+            <p
+              v-show="isDeliveryAddressEdited"
+              class="w-full mt-2 font-regular text-sm text-yellow-700 flex items-center gap-x-1"
+            >
+              <span class="inline-block"><TriangleAlertIcon :size="16" /></span>
+              <span class="inline-block">{{
+                $t("components.order.editor-panel.info.notice-3")
+              }}</span>
+            </p>
             <p
               class="w-full mt-2 font-regular text-sm text-neutral-grey-900 flex items-center gap-x-1"
             >
@@ -511,10 +702,7 @@
                 class="p-0 *:px-6 *:py-2 *:h-10 *:bg-neutral-grey-200 *:hover:bg-neutral-grey-300 *:text-base *:text-neutral-grey-1300 *:cursor-pointer"
               >
                 <li
-                  v-show="
-                    currentPreviewedOrder?.paymentStatus !== 'PAID' ||
-                    currentPreviewedOrder?.status !== 'COMPLETED'
-                  "
+                  v-show="!shouldDisableEditBtn"
                   @click="
                     () => {
                       if (
@@ -523,6 +711,8 @@
                       )
                         return void null;
 
+                      customer.executeImmediate();
+
                       orderActions.startEditing();
                       popoverEditorKey = nanoid();
                     }
@@ -530,8 +720,12 @@
                 >
                   <button>Edit</button>
                 </li>
-                <li>
-                  <button>Expand</button>
+                <li class="relative">
+                  <NuxtLink
+                    :to="`orders/${currentPreviewedOrder?.id.toLowerCase() || ''}`"
+                    class="absolute top-2 bottom-0 left-6 right-0"
+                    >Expand</NuxtLink
+                  >
                 </li>
                 <UIAlertDialog>
                   <UIAlertDialogTrigger as-child>
