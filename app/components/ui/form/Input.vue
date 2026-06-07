@@ -1,16 +1,23 @@
 <script lang="ts" setup>
   import type { HTMLAttributes, InputHTMLAttributes } from "vue";
+
   interface FormInputProps extends /* @vue-ignore */ InputHTMLAttributes {
     label: string;
     title: string;
     placeholder: string;
     class?: HTMLAttributes["class"];
   }
+
   const props = defineProps<FormInputProps>();
+  const model = defineModel<string>();
 
   defineOptions({
     inheritAttrs: false,
   });
+
+  const handleInput = (event: Event) => {
+    model.value = (event.target as HTMLInputElement).value;
+  };
 </script>
 
 <template>
@@ -22,6 +29,7 @@
     >
     <input
       v-bind="{ ...$attrs }"
+      :value="model ?? $attrs.value"
       :placeholder="placeholder"
       :class="
         cn(
@@ -29,6 +37,7 @@
           props.class,
         )
       "
+      @input="handleInput"
     />
   </label>
 </template>
