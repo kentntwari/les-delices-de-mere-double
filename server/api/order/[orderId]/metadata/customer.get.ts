@@ -3,11 +3,7 @@ import type { TCustomerFullDTO } from "~~/mvc/mapper/customer";
 import { OrderController } from "~~/mvc/controllers/order";
 import { CustomerController } from "~~/mvc/controllers/customer";
 
-import {
-  BadRequestResponse,
-  InternalServerErrorResponse,
-  JsonResponse,
-} from "~~/mvc/controllers/base";
+import { JsonResponse } from "~~/mvc/controllers/base";
 
 const log = createRequestLogger(
   "server.api.order.[orderId].metadata.customer.get.ts",
@@ -33,9 +29,9 @@ export default defineEventHandler(async (event) => {
 
     if (!(r instanceof JsonResponse)) return treatErrors(r);
 
-    const b = (await $fetch(`/api/customer/${r.data.data.id}`)) as {
-      data: TCustomerFullDTO;
-    };
+    const b = await $fetch<{ data: TCustomerFullDTO }>(
+      `/api/customer/${r.data.data.id}`,
+    );
 
     return {
       data: {
