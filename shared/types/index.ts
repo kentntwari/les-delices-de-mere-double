@@ -1,4 +1,5 @@
 import type { User as UserModel } from "@prisma/client";
+import type { TOrderDTO } from "~~/mvc/mapper/order";
 import type {
   TCustomerSchema as TCustomerDTO,
   TAddressSchema,
@@ -28,3 +29,18 @@ export type TPreviewedOrderMetadata = {
     address: TAddressSchema | null;
   };
 };
+
+export interface IApiOrderData extends TOrderDTO {
+  _meta: {
+    customer: {
+      id: string;
+      name: string;
+    } | null;
+    delivery: {
+      status: "isRequested" | "notRequested";
+      fees: { total: string };
+    } | null;
+    createdAt: string | null;
+    updatedAt: string | null;
+  };
+}
