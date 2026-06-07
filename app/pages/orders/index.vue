@@ -4,7 +4,6 @@
   import { storeToRefs } from "pinia";
 
   import type { TProvidedInteractionState } from "~/types";
-  import type { TOrderDTO } from "~~/mvc/mapper/order";
 
   import AppOrderCreatePanel from "~/components/app/order/CreatePanel.vue";
   import AppOrderPreviewEditPanel from "~/components/app/order/PreviewEdit.Panel.vue";
@@ -12,30 +11,25 @@
   import { GET_ORDERS_KEY, INJECT_FIRST_INTERACTION } from "~/app.keys";
   import { useOrderPreviewStore } from "~/stores/orderPreview";
 
+  import { OrderMapper, type TOrderDTO } from "~~/mvc/mapper/order";
+  import { OrderFactory } from "~~/mvc/factories/order";
+
   const orderPreviewStore = useOrderPreviewStore();
 
   definePageMeta({
     name: "Orders",
   });
 
-  const shouldBypassCache = ref(false);
-  async function refreshOrders() {
-    shouldBypassCache.value = true;
-    await refreshNuxtData(GET_ORDERS_KEY);
-    shouldBypassCache.value = false;
-  }
+  const { refreshOrders, getCachedData } = useRefreshApiDataUtils<{
+    data: TOrderDTO[];
+  }>(GET_ORDERS_KEY);
 
   const { status, data: orders } = useLazyFetch<{ data: TOrderDTO[] }>(
     "/api/orders",
     {
       key: GET_ORDERS_KEY,
       default: () => ({ data: [] }),
-      getCachedData(key, nuxtApp) {
-        if (shouldBypassCache.value) return undefined;
-        return (
-          nuxtApp.payload.data[key] ?? nuxtApp.static.data[key] ?? undefined
-        );
-      },
+      getCachedData,
     },
   );
 
@@ -109,6 +103,12 @@
         async onResponse({ response }) {
           if (response.status === 204) await refreshOrders();
         },
+        onRequestError() {
+          rollbackOptimisticOrderUpdates(id);
+        },
+        onResponseError() {
+          rollbackOptimisticOrderUpdates(id);
+        },
       });
     },
     500,
@@ -164,6 +164,71 @@
         data: orders.value.data.filter((order) => order.id !== id),
       };
     }
+  }
+
+  const previousOrderSnapshots = new Map<
+    string,
+    { order: TOrderDTO; previewedOrder: TOrderDTO | null }
+  >();
+
+  function updateOptimisticOrder(id: string, updates: Partial<TOrderDTO>) {
+    const calculateNewTotalAfterUpdates = () => {
+      return (
+        parseFloat(updates.total || "0.00") +
+        parseFloat(orderPreviewStore.previewedMetadata?.delivery.fee || "0.00")
+      ).toFixed(2);
+    };
+
+    if (orders.value.data) {
+      const original = orders.value.data.find((order) => order.id === id);
+      if (original) {
+        previousOrderSnapshots.set(id, {
+          order: { ...original },
+          previewedOrder:
+            currentPreviewedOrder.value && currentPreviewedOrder.value.id === id
+              ? { ...currentPreviewedOrder.value }
+              : null,
+        });
+      }
+
+      orders.value = {
+        ...orders.value,
+        data: orders.value.data.map((order) =>
+          order.id === id
+            ? {
+                ...order,
+                ...updates,
+                total: calculateNewTotalAfterUpdates(),
+              }
+            : order,
+        ),
+      };
+    }
+
+    if (currentPreviewedOrder.value && currentPreviewedOrder.value.id === id) {
+      currentPreviewedOrder.value = {
+        ...currentPreviewedOrder.value,
+        ...updates,
+        total: calculateNewTotalAfterUpdates(),
+      };
+    }
+  }
+
+  function rollbackOptimisticOrderUpdates(id: string) {
+    const snapshot = previousOrderSnapshots.get(id);
+    if (!snapshot) return;
+    if (orders.value.data) {
+      orders.value = {
+        ...orders.value,
+        data: orders.value.data.map((order) =>
+          order.id === id ? snapshot.order : order,
+        ),
+      };
+    }
+    if (snapshot.previewedOrder !== null) {
+      currentPreviewedOrder.value = snapshot.previewedOrder;
+    }
+    previousOrderSnapshots.delete(id);
   }
 
   function rollbackOptimisticOrder() {
@@ -259,6 +324,16 @@
             "
             @update-order="
               (payload) => {
+                const entity = new OrderFactory().build({
+                  id: payload.id,
+                  customerId: '',
+                  items: [...payload.items.current, ...payload.items.added],
+                });
+
+                updateOptimisticOrder(payload.id, {
+                  ...new OrderMapper().toDto(entity),
+                });
+
                 return toast.promise(
                   commitOrderUpdateToServer(payload.id, {
                     items: payload.items,
