@@ -44,3 +44,13 @@ export interface IApiOrderData extends TOrderDTO {
     updatedAt: string | null;
   };
 }
+
+export interface IApiOrderCommentData {
+  id: string;
+  comment: string;
+  _meta: {
+    likedCount: number;
+    createdBy: string;
+    createdAt: string;
+  };
+}

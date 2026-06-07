@@ -1,4 +1,5 @@
 import type { TOrderCommentDTO } from "~~/mvc/mapper/order";
+import { IApiOrderCommentData } from "~~/shared/types";
 
 type EventStreamLike = {
   push(message: string): Promise<void>;
@@ -31,7 +32,7 @@ export function removeSSEConnection(
 
 export function broadcastComment(
   orderId: string,
-  comment: TOrderCommentDTO,
+  comment: IApiOrderCommentData,
 ): void {
   const connections = orderSSEConnections.get(orderId);
   if (!connections) return;
