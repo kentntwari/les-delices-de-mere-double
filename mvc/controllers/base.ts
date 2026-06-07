@@ -1,6 +1,10 @@
 import { errorMap } from "../../shared/utils/errorMap";
 import { createLogger } from "../../server/utils/logger";
-import { ApplicationError, NetworkError } from "../errors.appwide";
+import {
+  ApplicationError,
+  NetworkError,
+  NotFoundError,
+} from "../errors.appwide";
 
 const log = createLogger("mvc.controllers.base");
 
@@ -303,6 +307,15 @@ export abstract class BaseController {
       case error instanceof ApplicationError:
         return new BadRequestResponse(
           errorMap.app.general.BAD_REQUEST,
+          {},
+          {
+            context: JSON.stringify({ originalError: error, ...context }),
+          },
+        );
+
+      case error instanceof NotFoundError:
+        return new NotFoundResponse(
+          errorMap.app.general.NOT_FOUND,
           {},
           {
             context: JSON.stringify({ originalError: error, ...context }),
