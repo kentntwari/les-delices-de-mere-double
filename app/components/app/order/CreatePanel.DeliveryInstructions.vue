@@ -6,58 +6,16 @@
   }>();
 
   const emits = defineEmits<{
-    (e: "update:delivery", value: boolean): void;
     (e: "update:home-address", value: boolean): void;
   }>();
 
-  const deliveryChoices = {
-    "does-request": "customer requests delivery",
-    "no-delivery": "customer does not request delivery",
-  } as const;
-
-  const choice = ref<keyof typeof deliveryChoices>(
-    props.data?.isRequired ? "does-request" : "no-delivery",
-  );
-
-  const provinces = computed(() => {
-    return {
-      BC: "British Columbia",
-      MB: "Manitoba",
-      NB: "New Brunswick",
-      NL: "Newfoundland and Labrador",
-      NS: "Nova Scotia",
-      ON: "Ontario",
-      PE: "Prince Edward Island",
-      QC: "Quebec",
-      SK: "Saskatchewan",
-      NT: "Northwest Territories",
-      NU: "Nunavut",
-      YT: "Yukon",
-    } as const;
-  });
+  const { provinces, normalizeProvince, resolveProvinceLabel } =
+    useAppProvinces();
 </script>
 
 <template>
   <div class="h-full grid grid-rows-[auto_auto_1fr] gap-y-8">
-    <UISelect v-model="choice">
-      <UISelectTrigger
-        class="data-[size=default]:h-11 bg-white border-neutral-grey-500 text-neutral-grey-1000"
-      >
-        <UISelectValue :aria-label="choice">{{
-          deliveryChoices[choice]
-        }}</UISelectValue>
-      </UISelectTrigger>
-      <UISelectContent>
-        <UISelectItem
-          v-for="(label, key) in deliveryChoices"
-          :key="key"
-          :value="key"
-          @select="emits('update:delivery', key === 'does-request')"
-        >
-          {{ label }}
-        </UISelectItem>
-      </UISelectContent>
-    </UISelect>
+    <slot />
     <address
       class="grid grid-cols-2 gap-y-6 gap-x-2 not-italic"
       v-if="props.data?.isRequired"
@@ -109,22 +67,21 @@
         <Field
           name="delivery.address.province"
           :keep-value="true"
-          v-slot="{ field, meta }"
+          v-slot="{ field, meta, handleChange }"
         >
-          <UISelect v-bind="field" class="w-full">
+          <UISelect
+            :model-value="normalizeProvince(field.value)"
+            class="w-full"
+            @update:model-value="handleChange"
+          >
             <UISelectTrigger
               class="data-[size=default]:h-11 bg-white border-neutral-grey-500 text-neutral-grey-1000 w-full"
             >
               <UISelectValue
-                :aria-label="field.value"
+                :aria-label="resolveProvinceLabel(field.value)"
                 :placeholder="'Select province...'"
               >
-                {{
-                  provinces[
-                    (props.data.address?.province as keyof typeof provinces) ||
-                      "QC"
-                  ] || field.value
-                }}
+                {{ resolveProvinceLabel(field.value) }}
               </UISelectValue>
             </UISelectTrigger>
             <UISelectContent>
