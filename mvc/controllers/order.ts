@@ -49,8 +49,24 @@ export class OrderController extends BaseController {
     }
   }
 
-  async read() {
-    return new BadRequestResponse("Not implemented yet");
+  async read(id: string) {
+    try {
+      const order = await this.service.read(id);
+
+      return new JsonResponse({
+        data: this.mapper.toDto(order),
+      });
+    } catch (error) {
+      this.logError(error, {
+        origin: "controllers.order.read",
+        orderId: id,
+      });
+
+      return this.mapErrorResponse(error, {
+        origin: "controllers.order.read",
+        orderId: id,
+      });
+    }
   }
 
   async create() {
@@ -151,6 +167,16 @@ export class OrderController extends BaseController {
   ): Promise<
     | JsonResponse<{
         data: ReturnType<typeof OrderTransformer.toDeliveryDetails>;
+      }>
+    | BadRequestResponse
+    | InternalServerErrorResponse
+  >;
+  async handleIntent(
+    intent: "get-order-timeline",
+    orderId: string,
+  ): Promise<
+    | JsonResponse<{
+        data: { createdAt: string; updatedAt: string };
       }>
     | BadRequestResponse
     | InternalServerErrorResponse
@@ -409,6 +435,23 @@ export class OrderController extends BaseController {
           });
           return this.mapErrorResponse(error, {
             origin: "controllers.order.handleIntent.get-order-delivery-details",
+            orderId,
+          });
+        }
+      }
+
+      case "get-order-timeline": {
+        try {
+          return new JsonResponse({
+            data: await this.service.getTimeline(orderId),
+          });
+        } catch (error) {
+          this.logError(error, {
+            origin: "controllers.order.handleIntent.get-order-timeline",
+            orderId,
+          });
+          return this.mapErrorResponse(error, {
+            origin: "controllers.order.handleIntent.get-order-timeline",
             orderId,
           });
         }
