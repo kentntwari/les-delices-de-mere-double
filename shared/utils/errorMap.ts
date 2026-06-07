@@ -14,6 +14,7 @@ interface IApiErrors {
 interface IGeneralErrors {
   INTERNAL_SERVER_ERROR: string;
   BAD_REQUEST: string;
+  NOT_FOUND?: string;
   UNABLE_TO_PROCESS?: string;
 }
 
@@ -46,6 +47,7 @@ export const errorMap = {
     general: {
       INTERNAL_SERVER_ERROR: "Something went wrong on our end.",
       BAD_REQUEST: "There was an issue while processing your request.",
+      NOT_FOUND: "Resource not found",
       UNABLE_TO_PROCESS:
         "The server is unable to process your request at this time.",
     } satisfies IGeneralErrors,
