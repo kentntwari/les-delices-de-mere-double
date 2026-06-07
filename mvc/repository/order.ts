@@ -116,10 +116,10 @@ export class OrderRepository implements IOrderRepository {
     }
   }
 
-  async get(id: string) {
+  async get(id: string): Promise<OrderModel | null> {
     try {
-      return await this.db.order.findUnique({
-        where: { id },
+      return await this.db.order.findFirst({
+        where: { id: { equals: id, mode: "insensitive" } },
         include: {
           items: {
             include: {
@@ -242,8 +242,8 @@ export class OrderRepository implements IOrderRepository {
 
   async getCustomerIdFromOrderId(orderId: string) {
     try {
-      const o = await this.db.order.findUnique({
-        where: { id: orderId },
+      const o = await this.db.order.findFirst({
+        where: { id: { equals: orderId, mode: "insensitive" } },
         select: {
           customer: {
             select: {
@@ -257,6 +257,24 @@ export class OrderRepository implements IOrderRepository {
     } catch (error) {
       throw new DatabaseError("Failed to retrieve customer from order", {
         operation: "getCustomerIdFromOrderId",
+        orderId,
+        error,
+      });
+    }
+  }
+
+  async getTimeline(orderId: string) {
+    try {
+      return await this.db.order.findFirstOrThrow({
+        where: { id: { equals: orderId, mode: "insensitive" } },
+        select: {
+          createdAt: true,
+          updatedAt: true,
+        },
+      });
+    } catch (error) {
+      throw new DatabaseError("Failed to retrieve order timeline data", {
+        operation: "getOrderTimeline",
         orderId,
         error,
       });
