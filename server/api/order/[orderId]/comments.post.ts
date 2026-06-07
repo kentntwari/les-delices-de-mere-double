@@ -11,7 +11,7 @@ const log = createRequestLogger(
 export default defineEventHandler(async (event) => {
   try {
     const { orderId } = event.context.params as { orderId: string };
-    const { userId } = event.context.auth();
+    const userId = event.context.auth?.userId;
 
     if (!userId) {
       throw createError({
@@ -27,7 +27,15 @@ export default defineEventHandler(async (event) => {
       "POST REQUEST RECEIVED: Creating order comment",
     );
 
-    const r = await new OrderController(toWebRequest(event)).handleIntent(
+    const body = await readBody(event);
+
+    const enrichedRequest = new Request(toWebRequest(event).url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ...body, userId }),
+    });
+
+    const r = await new OrderController(enrichedRequest).handleIntent(
       "create-comment",
       orderId,
     );
