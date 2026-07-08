@@ -7,10 +7,10 @@
     "dev": "nuxt dev",
     "generate": "nuxt generate",
     "preview": "nuxt preview",
-    "postinstall": "nuxt prepare"
+    "postinstall": "prisma generate ; nuxt prepare"
   },
   "dependencies": {
-    "@clerk/nuxt": "^1.12.1",
+    "@clerk/nuxt": "^2.6.13",
     "@nuxt/icon": "^2.1.0",
     "@pinia/nuxt": "^0.11.3",
     "@prisma/client": "^6.19.0",
