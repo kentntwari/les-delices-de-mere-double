@@ -16,9 +16,13 @@ import {
   type TOrderCommentDTO,
   type TOrderDTO,
   type TOrderLogDTO,
+  type TOrderCommentDetailsDTO,
 } from "../mapper/order";
 import { OrderTransformer } from "../transformers/order";
-import type { IApiOrderCommentData } from "~~/shared/types";
+
+interface IOrderControllerOptions {
+  userService: UserService;
+}
 
 export class OrderController extends BaseController {
   protected originator_user_id: string = "UNKNOWN_USER_ID";
@@ -27,7 +31,9 @@ export class OrderController extends BaseController {
     req: Request,
     private service: OrderService = new OrderService(),
     private mapper: OrderMapper = new OrderMapper(),
-    private userService: UserService = new UserService(),
+    private options: IOrderControllerOptions = {
+      userService: new UserService(),
+    },
   ) {
     super(req);
   }
@@ -69,6 +75,50 @@ export class OrderController extends BaseController {
       return this.mapErrorResponse(error, {
         origin: "controllers.order.read",
         orderId: id,
+      });
+    }
+  }
+
+  async extractPreview(orderId: string) {
+    try {
+      const [preview, deliveryDetails] = await Promise.allSettled([
+        this.service.getPreview(orderId),
+        this.service.listDeliveryDetails(orderId),
+      ]);
+
+      if (preview.status === "rejected") {
+        this.logError(preview.reason, {
+          origin: "controllers.order.extractPreview.getPreview",
+          orderId,
+        });
+        return this.mapErrorResponse(preview.reason, {
+          origin: "controllers.order.extractPreview.getPreview",
+          orderId,
+        });
+      }
+
+      return new JsonResponse({
+        data: {
+          ...preview.value!,
+          customer: {
+            id: preview.value!.customer.id,
+            name: preview.value!.customer.fullName,
+          },
+          delivery:
+            deliveryDetails.status !== "fulfilled"
+              ? null
+              : deliveryDetails.value,
+        },
+      });
+    } catch (error) {
+      this.logError(error, {
+        origin: "controllers.order.extractPreview",
+        orderId,
+      });
+
+      return this.mapErrorResponse(error, {
+        origin: "controllers.order.extractPreview",
+        orderId,
       });
     }
   }
@@ -125,7 +175,9 @@ export class OrderController extends BaseController {
 
   async createComment(orderId: string) {
     try {
-      const user = await this.userService.readUser(this.originator_user_id);
+      const user = await this.options.userService.readUser(
+        this.originator_user_id,
+      );
 
       if (!user) {
         this.logError(new Error("User not found"), {
@@ -142,16 +194,8 @@ export class OrderController extends BaseController {
         await this.getBody(),
       );
 
-      return new JsonResponse<{ data: IApiOrderCommentData }>({
-        data: {
-          id: entity.id,
-          comment: entity.comment,
-          _meta: {
-            likedCount: entity.likedCount,
-            createdBy: user.id,
-            createdAt: entity.createdAt,
-          },
-        },
+      return new JsonResponse<{ data: TOrderCommentDTO }>({
+        data: this.mapper.toCommentDto(entity),
       });
     } catch (error) {
       this.logError(error, {
@@ -218,11 +262,19 @@ export class OrderController extends BaseController {
     | InternalServerErrorResponse
   >;
   async handleIntent(
+    intent: "get-order-comments-details",
+    orderId: string,
+  ): Promise<
+    | JsonResponse<{ data: TOrderCommentDetailsDTO[] }>
+    | BadRequestResponse
+    | InternalServerErrorResponse
+  >;
+  async handleIntent(
     intent: "get-order-timeline",
     orderId: string,
   ): Promise<
     | JsonResponse<{
-        data: { createdAt: string; updatedAt: string };
+        data: { createdAt: Date; updatedAt: Date };
       }>
     | BadRequestResponse
     | InternalServerErrorResponse
@@ -269,6 +321,7 @@ export class OrderController extends BaseController {
   ): Promise<
     | JsonResponse<{ data: TOrderDTO }>
     | JsonResponse<{ data: TOrderCommentDTO[] }>
+    | JsonResponse<{ data: TOrderCommentDTO }>
     | JsonResponse<{ data: TOrderLogDTO[] }>
     | JsonResponse<{ data: { id: string } }>
     | JsonResponse<{
@@ -276,6 +329,9 @@ export class OrderController extends BaseController {
       }>
     | JsonResponse<{
         data: ReturnType<typeof OrderTransformer.toDeliveryDetails>;
+      }>
+    | JsonResponse<{
+        data: { createdAt: Date; updatedAt: Date };
       }>
     | SilentSuccessResponse
     | BadRequestResponse
@@ -289,9 +345,7 @@ export class OrderController extends BaseController {
 
       case "get-comments": {
         try {
-          const comments = await this.service
-            .defineAuthor(this.originator_user_id)
-            .listComments(orderId);
+          const comments = await this.service.listComments(orderId);
           return new JsonResponse({
             data: this.mapper.toCommentDtoList(comments),
           });
@@ -453,6 +507,24 @@ export class OrderController extends BaseController {
         }
       }
 
+      case "get-order-comments-details": {
+        try {
+          const details = await this.service.listCommentsDetails(orderId);
+          return new JsonResponse({
+            data: details,
+          });
+        } catch (error) {
+          this.logError(error, {
+            origin: "controllers.order.handleIntent.get-order-comments-details",
+            orderId,
+          });
+          return this.mapErrorResponse(error, {
+            origin: "controllers.order.handleIntent.get-order-comments-details",
+            orderId,
+          });
+        }
+      }
+
       case "get-order-count-metadata": {
         try {
           const metadata = await this.service.listCountMetadata(orderId);
@@ -506,6 +578,11 @@ export class OrderController extends BaseController {
       }
 
       default:
+        this.logError("unrecognized intent", {
+          origin: "controllers.order.handleIntent",
+          orderId,
+          intent,
+        });
         return new BadRequestResponse("Unrecognized intent");
     }
   }
