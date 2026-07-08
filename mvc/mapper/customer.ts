@@ -1,9 +1,10 @@
 import type { CustomerModel } from "../repository/customer";
-import type { TCustomerSchema as TCustomerDTO } from "../../shared/utils/schemas.zod";
+import type { TCustomerSchema } from "../../shared/utils/schemas.zod";
 
 import { BaseMapper } from "./base";
 import { CustomerEntity } from "../entities/customer";
 
+export type TCustomerDTO = TCustomerSchema & {};
 export type TCustomerFullDTO = Required<
   Omit<TCustomerDTO, "address"> & {
     address: TCustomerDTO["address"] | null;

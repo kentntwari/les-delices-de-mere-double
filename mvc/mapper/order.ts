@@ -6,6 +6,7 @@ import {
   OrderLogEntity,
 } from "../entities/order";
 import { OrderedItemEntity } from "../entities/item";
+import { OrderFactory } from "../factories/order";
 
 import type {
   OrderModel,
@@ -13,7 +14,6 @@ import type {
   OrderLogModel,
 } from "../repository/order";
 import type { TOrderSchema } from "../../shared/utils/schemas.zod";
-import type { UserEntity } from "../entities/user";
 
 export type TOrderDTO = TOrderSchema & {
   status: OrderEntity["status"];
@@ -24,8 +24,19 @@ export type TOrderLogDTO = Pick<OrderLogEntity, "message" | "createdAt">;
 
 export type TOrderCommentDTO = Pick<
   OrderCommentEntity,
-  "id" | "comment" | "likedCount" | "createdAt"
+  "id" | "comment" | "userName" | "likedCount" | "createdAt"
 >;
+
+type TTaggedUserId = string;
+export type TOrderCommentDetailsDTO = {
+  id: string;
+  user_name: string | undefined;
+  comment: string;
+  taggedUsers: TTaggedUserId[];
+  likedBy: TTaggedUserId[];
+  likedCount: number;
+  createdAt: string;
+};
 
 export class OrderMapper extends BaseMapper<
   OrderEntity,
@@ -33,29 +44,8 @@ export class OrderMapper extends BaseMapper<
   OrderModel
 > {
   toEntity(data: OrderModel): OrderEntity {
-    const o = new OrderEntity(
-      data.id,
-      data.customerId || "UNKNOWN_CUSTOMER_ID",
-      // FIX: This should come from a ItemMapper or similar
-      data.items.map(
-        ({ orderId, item, quantity, itemId }) =>
-          new OrderedItemEntity(
-            // INFO: Instead of using the assigned id best to use the parent menu item id to avoid mismatches with menu items
-            itemId || item?.id || "UNKNOWN_ITEM_ID",
-            orderId ?? "",
-            item?.title ?? "UNKNOWN_ITEM_TITLE",
-            "",
-            item?.unitPrice ?? 0,
-            quantity,
-          ),
-      ),
-      data.status,
-      data.paymentStatus,
-      data.deliveryFee ? "requested" : "not-requested",
-    );
-
+    const o = OrderFactory.fromModel(data);
     if (data.deliveryFee) o.deliveryFee = data.deliveryFee.toString();
-
     return o;
   }
 
@@ -152,31 +142,29 @@ export class OrderMapper extends BaseMapper<
     return entities.map((entity) => this.toLogDto(entity));
   }
 
-  toCommentEntity(
-    data: OrderCommentModel,
-    user?: UserEntity,
-  ): OrderCommentEntity {
-    return new OrderCommentEntity(
+  toCommentEntity(data: OrderCommentModel): OrderCommentEntity {
+    const e = new OrderCommentEntity(
       data.id,
       data.comment,
       data.orderId,
-      user?.id ?? "UNKNOWN_USER_ID",
-      data.likedCount,
+      data.userId,
       data.createdAt.toISOString(),
     );
+
+    e.userName = data.user_name || "";
+
+    return e;
   }
 
-  toCommentEntityList(
-    data: OrderCommentModel[],
-    user?: UserEntity,
-  ): OrderCommentEntity[] {
-    return data.map((comment) => this.toCommentEntity(comment, user));
+  toCommentEntityList(data: OrderCommentModel[]): OrderCommentEntity[] {
+    return data.map((comment) => this.toCommentEntity(comment));
   }
 
   toCommentDto(entity: OrderCommentEntity): TOrderCommentDTO {
     return {
       id: entity.id,
       comment: entity.comment,
+      userName: entity.userName,
       likedCount: entity.likedCount,
       createdAt: entity.createdAt,
     };

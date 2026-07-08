@@ -16,13 +16,17 @@ export class UserMapper extends BaseMapper<UserEntity, TUserDTO, UserModel> {
       firstName || "",
       lastNameParts.join(" ") || "",
       data.email,
-      data.role
+      data.role,
     );
 
     e.permissions = data.permissions;
     e.status = data.status;
 
     return e;
+  }
+
+  toEntityList(data: UserModel[]): UserEntity[] {
+    return data.map((model) => this.toEntity(model));
   }
 
   toDto(entity: UserEntity) {
@@ -35,6 +39,10 @@ export class UserMapper extends BaseMapper<UserEntity, TUserDTO, UserModel> {
     };
   }
 
+  toDtoList(entities: UserEntity[]): ReturnType<UserMapper["toDto"]>[] {
+    return entities.map((entity) => this.toDto(entity));
+  }
+
   toSafeModel(entity: UserEntity) {
     return {
       id: entity.id,
@@ -42,5 +50,15 @@ export class UserMapper extends BaseMapper<UserEntity, TUserDTO, UserModel> {
       email: entity.email,
       role: entity.role,
     };
+  }
+
+  fromDto(dto: ReturnType<UserMapper["toDto"]>): UserEntity {
+    return new UserEntity(
+      dto.id,
+      dto.firstName,
+      dto.lastName,
+      dto.email,
+      dto.role,
+    );
   }
 }

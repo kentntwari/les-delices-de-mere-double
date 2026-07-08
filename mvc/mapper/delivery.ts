@@ -32,9 +32,11 @@ export class DeliveryMapper {
           data.deliveryAddress?.country ||
           DeliveryFactory.defaultAddress.country,
       },
-      fees: data.order?.deliveryFee
-        ? { total: data.order.deliveryFee }
-        : undefined,
+      fees:
+        data.order?.deliveryFee !== null &&
+        data.order?.deliveryFee !== undefined
+          ? { total: data.order.deliveryFee }
+          : undefined,
       _meta: {
         order: data.order
           ? {
