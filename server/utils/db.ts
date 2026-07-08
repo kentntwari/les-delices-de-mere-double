@@ -1,5 +1,6 @@
 import { PrismaClient } from "@prisma/client";
 import { DatabaseError } from "~~/mvc/errors.db";
+import { logger } from "~~/server/utils/logger";
 
 const globalForPrisma = globalThis as unknown as { prisma: PrismaClient };
 
