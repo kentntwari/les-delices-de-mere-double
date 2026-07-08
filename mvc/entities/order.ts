@@ -4,6 +4,7 @@ import {
   type OrderCommentModel,
   type OrderLogModel,
 } from "../repository/order";
+import { UserEntity } from "./user";
 
 interface IOrderEntity extends Pick<OrderModel, "id" | "customerId"> {}
 interface IOrderLogEntity extends Omit<
@@ -12,8 +13,12 @@ interface IOrderLogEntity extends Omit<
 > {}
 interface IOrderCommentEntity extends Omit<
   OrderCommentModel,
-  "user" | "userId" | "orderId" | "taggedUserId" | "likedBy" | "createdAt"
+  "user_name" | "taggedUserId" | "likedBy" | "likedCount" | "createdAt"
 > {}
+
+interface IOrderCommentOptions {
+  user: UserEntity;
+}
 
 export class OrderLogEntity implements IOrderLogEntity {
   constructor(
@@ -24,14 +29,38 @@ export class OrderLogEntity implements IOrderLogEntity {
 }
 
 export class OrderCommentEntity implements IOrderCommentEntity {
+  protected _userName: string | undefined;
+  private _taggedUsers: string[] = [];
+  private _likedBy: string[] = [];
+  private _likedCount: number = 0;
+
   constructor(
     public readonly id: string,
     public readonly comment: string,
     public readonly orderId: string,
-    public readonly userId: string | undefined,
-    public readonly likedCount: number,
+    public readonly userId: string | null,
     public readonly createdAt: string,
+    private options: IOrderCommentOptions = {
+      user: new UserEntity("", "", "", "", "USER"),
+    },
   ) {}
+
+  get userName(): string | undefined {
+    return this._userName;
+  }
+
+  set userName(name: string) {
+    this.options.user.fullName = name;
+    this._userName = this.options.user.fullName;
+  }
+
+  get likedCount(): number {
+    return this._likedCount;
+  }
+
+  set likedCount(count: number) {
+    this._likedCount = count;
+  }
 }
 
 export class OrderEntity implements IOrderEntity {
