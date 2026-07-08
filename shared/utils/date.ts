@@ -15,10 +15,13 @@ export class DateUtils {
   }
 
   static convertDate(date: Date | string, timeZone = "America/Toronto") {
-    const parsed = date instanceof Date ? date : new Date(date);
+    const parsed =
+      date instanceof Date
+        ? new Date(date.getTime())
+        : new Date(typeof date === "string" ? Date.parse(date.trim()) : NaN);
 
-    if (isNaN(parsed.getTime())) {
-      logger.warn({ date }, "Invalid date input");
+    if (Number.isNaN(parsed.getTime())) {
+      logger.warn({ date, timeZone }, "Invalid date input");
       return "";
     }
 

@@ -1,11 +1,12 @@
 import type { User as UserModel } from "@prisma/client";
-import type { TOrderDTO } from "~~/mvc/mapper/order";
+import type { TOrderDTO, TOrderLogDTO } from "~~/mvc/mapper/order";
 import type {
   TCustomerSchema as TCustomerDTO,
   TAddressSchema,
 } from "../utils/schemas.zod";
 
 import { OrderTransformer } from "../../mvc/transformers/order";
+import type { OrderRepository } from "~~/mvc/repository/order";
 export interface IUserMeta {
   status: UserModel["status"];
   role: UserModel["role"];
@@ -30,8 +31,17 @@ export type TPreviewedOrderMetadata = {
   };
 };
 
+export type TOrderPreviewRepositoryModel = NonNullable<
+  Awaited<ReturnType<OrderRepository["getPreview"]>>
+>;
+
 export interface IApiOrderData extends TOrderDTO {
   _meta: {
+    _itemsCount?: number;
+    _commentsCount?: number;
+    _logsCount?: number;
+    logs: TOrderLogDTO[] | null;
+    comments: IApiOrderCommentData[] | null;
     customer: {
       id: string;
       name: string;
@@ -49,6 +59,7 @@ export interface IApiOrderCommentData {
   id: string;
   comment: string;
   _meta: {
+    mentionedUsers: string[];
     likedCount: number;
     createdBy: string;
     createdAt: string;
