@@ -43,6 +43,7 @@ export default defineNuxtConfig({
     "/api/customers": {
       cache: { name: "customers", maxAge: 60 * 60 * 24, swr: true },
     },
+    "/api/users": { cache: { name: "users", maxAge: 60 * 60 * 24, swr: true } },
   },
   modules: [
     "@pinia/nuxt",
