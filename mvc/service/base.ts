@@ -16,6 +16,12 @@ export abstract class BaseService {
       case error instanceof ApplicationError:
         throw error;
 
+      case error instanceof Error:
+        throw new ApplicationError(error.message, {
+          originalError: error,
+          source,
+        });
+
       default:
         throw new ApplicationError("An unexpected error occurred", {
           originalError: error,
