@@ -315,7 +315,10 @@ export class DeliveryRepository implements IDeliveryRepository {
     try {
       const b = await this.db.orderDeliveryAddress.findFirst({
         where: {
-          orderId,
+          orderId: {
+            equals: orderId,
+            mode: "insensitive",
+          },
         },
         select: {
           id: true,
