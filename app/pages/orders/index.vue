@@ -24,14 +24,15 @@
     data: TOrderDTO[];
   }>(GET_ORDERS_KEY);
 
-  const { status, data: orders } = useLazyFetch<{ data: TOrderDTO[] }>(
-    "/api/orders",
-    {
-      key: GET_ORDERS_KEY,
-      default: () => ({ data: [] }),
-      getCachedData,
-    },
-  );
+  const {
+    status,
+    data: orders,
+    error,
+  } = useLazyFetch<{ data: TOrderDTO[] }>("/api/orders", {
+    key: GET_ORDERS_KEY,
+    default: () => ({ data: [] }),
+    getCachedData,
+  });
 
   const aggregatePageTotal = computed(() => {
     if (!orders.value) return "0.00";
@@ -263,7 +264,10 @@
 </script>
 
 <template>
-  <section v-if="status === 'pending' && !hasOrders" class="container">
+  <section v-if="error" class="container">
+    An error occurred while fetching orders: {{ error.message }}
+  </section>
+  <section v-else-if="status === 'pending' && !hasOrders" class="container">
     <AppSkeletonDefault />
   </section>
   <section
