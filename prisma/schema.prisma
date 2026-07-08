@@ -125,7 +125,7 @@ model OrderComment {
   orderId      String   @map("order_id")
   user         User?    @relation(fields: [userId], references: [id], onDelete: SetNull, onUpdate: Cascade)
   userId       String?  @map("from_user_id")
-  taggedUserId String?  @map("tagged_user_id")
+  taggedUserId String[] @map("tagged_user_id")
   likedBy      String[] @map("liked_by")
   likedCount   Int      @default(0) @map("liked_count")
   createdAt    DateTime @default(now()) @map("created_at")
