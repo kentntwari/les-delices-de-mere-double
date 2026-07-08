@@ -12,6 +12,28 @@ export class UserService extends BaseService {
     super();
   }
 
+  async listAll() {
+    try {
+      const model = await this.repository.getAll();
+      const list = model.map((user) => {
+        const n = UserFactory.fromFullName(user.name);
+        return this.factory.build({
+          ...model,
+          firstName: n.firstName,
+          lastName: n.lastName,
+        });
+      });
+
+      return list.map((e) => ({
+        id: e.id,
+        name: e.fullName,
+      }));
+    } catch (error) {
+      this.defaultMapError(error, "service.user.listAll");
+      throw error;
+    }
+  }
+
   async readUser(id: string) {
     try {
       const model = await this.repository.getUser(id);
