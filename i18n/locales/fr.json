@@ -91,6 +91,13 @@
       },
       "preview-panel": {
         "title": "Aperçu de la commande",
+        "nested-header": {
+          "delivery-title": "Commandé par: {customerName}",
+          "delivery-options": {
+            "requested": "Le client demande une livraison",
+            "not-requested": "Le client ne demande pas de livraison"
+          }
+        },
         "buttons": {
           "view-customer-info": "Voir détails du client",
           "mark-as-paid": "Marquer payé"
@@ -98,46 +105,103 @@
       },
       "editor-panel": {
         "title": "Modifier commande #{orderId}",
+        "ticker": {
+          "total-items": "{count} articles trouvés",
+          "removed-items": "{count} articles supprimés",
+          "added-items": "{count} articles ajoutés"
+        },
         "buttons": {
           "save-changes": "Enregistrer",
           "cancel": "Annuler"
-        }
-      }
-    },
-    "menu": {
-      "form": {
-        "label": "Étiquette",
-        "title": "Titre de l'article du menu",
-        "submit-button": "Enregistrer"
-      }
-    },
-    "alerts": {
-      "generic": {
-        "title": "Êtes-vous absolument sûr?",
-        "description": "Cette action ne peut pas être annulée.",
-        "cancel-button": "Annuler",
-        "confirm-button": "Continuer"
-      },
-      "order": {
-        "delete-order": {
-          "title": "Supprimer cette commande?",
-          "description": "Cette action ne peut pas être annulée. La commande sera définitivement supprimée.",
-          "cancel-button": "Annuler",
-          "confirm-button": "Continuer"
         },
-        "delete-items": {
-          "title": "Supprimer les articles sélectionnés?",
-          "description": "Cette action ne peut pas être annulée.",
-          "cancel-button": "Annuler",
-          "confirm-button": "Continuer"
+        "info": {
+          "description": "Avis importants",
+          "notice-1": "Seuls les articles et les options de livraison peuvent être modifiés",
+          "notice-2": "Pour plus d'options de modification, développez les détails de la commande",
+          "notice-3": "L'adresse de livraison a été modifiée"
         }
       },
       "menu": {
-        "delete-item": {
-          "title": "Supprimer cet article?",
+        "form": {
+          "label": "Étiquette",
+          "title": "Titre de l'article du menu",
+          "submit-button": "Enregistrer"
+        }
+      },
+      "alerts": {
+        "generic": {
+          "title": "Êtes-vous absolument sûr?",
           "description": "Cette action ne peut pas être annulée.",
           "cancel-button": "Annuler",
           "confirm-button": "Continuer"
+        },
+        "order": {
+          "restart": {
+            "title": "Recommencer la création de la commande?",
+            "description": "Toutes les informations saisies seront perdues.",
+            "cancel-button": "Annuler",
+            "confirm-button": "Continuer"
+          },
+          "cancel-editing": {
+            "title": "Annuler la modification de la commande?",
+            "description": "Toutes les modifications non enregistrées seront perdues.",
+            "cancel-button": "Annuler",
+            "confirm-button": "Continuer"
+          },
+          "change-order-status": {
+            "title": "Changer le statut de la commande?",
+            "description": "Cette action ne peut pas être annulée. Le statut de la commande sera changé.",
+            "cancel-button": "Annuler",
+            "confirm-button": "Continuer"
+          },
+          "revert-payment-status": {
+            "title": "Revenir à non payé?",
+            "description": "Cette action ne peut pas être annulée. Le statut de paiement de la commande sera défini sur non payé.",
+            "cancel-button": "Annuler",
+            "confirm-button": "Continuer"
+          },
+          "delete-order": {
+            "title": "Supprimer cette commande?",
+            "description": "Cette action ne peut pas être annulée. La commande sera définitivement supprimée.",
+            "cancel-button": "Annuler",
+            "confirm-button": "Continuer"
+          },
+          "delete-items": {
+            "title": "Supprimer les articles sélectionnés?",
+            "description": "Cette action ne peut pas être annulée.",
+            "cancel-button": "Annuler",
+            "confirm-button": "Continuer"
+          }
+        },
+        "menu": {
+          "delete-item": {
+            "title": "Supprimer cet article?",
+            "description": "Cette action ne peut pas être annulée.",
+            "cancel-button": "Annuler",
+            "confirm-button": "Continuer"
+          }
+        }
+      }
+    },
+    "pages": {
+      "orders": {
+        "header-title": "{orders-count} Commandes effectuées",
+        "no-orders": "Aucune commande trouvée",
+        "order-card": {
+          "view-details": "Voir les détails",
+          "status-label": "Statut",
+          "item-count": "{count} articles"
+        }
+      },
+      "menu": {
+        "header-title": "Articles ajoutés",
+        "item-card": {
+          "context-menu": {
+            "delete-item": "Supprimer",
+            "edit-item": "Modifier",
+            "edit-item-title": "Modifier le titre",
+            "edit-item-pricing": "Modifier le prix"
+          }
         }
       }
     }
@@ -152,8 +216,14 @@
         "item-count": "{count} articles"
       }
     },
+    "order": {
+      "items": {
+        "header-title": "{count} articles ajoutés"
+      }
+    },
     "menu": {
-      "header-title": "Articles ajoutés",
+      "header-title": " {items-count} articles du menu ajoutés",
+      "no-items": "Aucun article trouvé",
       "item-card": {
         "context-menu": {
           "delete-item": "Supprimer",

@@ -101,9 +101,27 @@
       },
       "editor-panel": {
         "title": "Edit order #{orderId}",
+        "nested-header": {
+          "delivery-title": "Ordered by: {customerName}",
+          "delivery-options": {
+            "requested": "Customer requests delivery",
+            "not-requested": "Customer does not request delivery"
+          }
+        },
+        "ticker": {
+          "total-items": "{count} items total found",
+          "removed-items": "{count} items removed",
+          "added-items": "{count} items added"
+        },
         "buttons": {
           "save-changes": "Save changes",
           "cancel": "Cancel"
+        },
+        "info": {
+          "description": "Important notices",
+          "notice-1": "Only items and delivery options can be edited in this editor panel",
+          "notice-2": "For more editing options, expand the order details",
+          "notice-3": "Delivery address has been edited"
         }
       }
     },
@@ -116,7 +134,7 @@
     },
     "alerts": {
       "generic": {
-        "title": "Are  Absolutely sure?",
+        "title": "Are you absolutely sure?",
         "description": "This action cannot be undone.",
         "cancel-button": "Cancel",
         "confirm-button": "Continue"
@@ -124,6 +142,15 @@
       "order": {
         "restart": {
           "description": "This action cannot be undone. All possible progress you've made in this order will be lost."
+        },
+        "cancel-editing": {
+          "description": "This action cannot be undone. All unsaved changes you've made to this order will be lost."
+        },
+        "change-order-status": {
+          "description": "Make sure the order is ready to be moved to the new status"
+        },
+        "revert-payment-status": {
+          "description": "This action cannot be undone. The order's payment status will be reverted to unpaid."
         },
         "delete-order": {
           "description": "This action cannot be undone. The order will be permanently deleted."
@@ -147,6 +174,11 @@
         "view-details": "View details",
         "status-label": "Status",
         "item-count": "{count} items"
+      }
+    },
+    "order": {
+      "items": {
+        "header-title": "{count} items added"
       }
     },
     "menu": {
