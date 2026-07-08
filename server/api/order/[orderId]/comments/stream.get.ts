@@ -6,7 +6,6 @@ import {
   removeSSEConnection,
 } from "~~/server/utils/sseConnections";
 import { JsonResponse } from "~~/mvc/controllers/base";
-import type { TOrderCommentDTO } from "~~/mvc/mapper/order";
 
 const log = createRequestLogger(
   "server.api.order.[orderId].comments.stream.get.ts",
@@ -14,6 +13,7 @@ const log = createRequestLogger(
 
 export default defineEventHandler(async (event) => {
   const { orderId } = event.context.params as { orderId: string };
+  const userId = event.context.auth().userId as string;
 
   log.info(
     event.path,
@@ -23,27 +23,23 @@ export default defineEventHandler(async (event) => {
   );
 
   // Check if order already has 10 comments
-  const r = await new OrderController(toWebRequest(event)).handleIntent(
-    "get-comments",
-    orderId,
-  );
+  const r = await new OrderController(toWebRequest(event))
+    .promoteUserId(userId)
+    .handleIntent("get-comments", orderId);
 
-  if (r instanceof JsonResponse) {
-    const comments = (r.data as { data: TOrderCommentDTO[] }).data;
-    if (comments.length >= 10) {
-      setResponseStatus(event, 204);
-      return null;
-    }
+  if (r instanceof JsonResponse && r.data.data.length >= 10) {
+    setResponseStatus(event, 204);
+    return null;
   }
 
   const eventStream = createEventStream(event);
 
   addSSEConnection(orderId, eventStream);
 
-  // Send keepalive every 2000ms to maintain the connection
+  // Keep the SSE connection alive with a JSON payload the client serializer can ignore safely.
   const interval = setInterval(async () => {
-    await eventStream.push(": keepalive");
-  }, 2000);
+    await eventStream.push({ event: "keepalive", data: "null" });
+  }, 5000);
 
   eventStream.onClosed(async () => {
     clearInterval(interval);
