@@ -8,6 +8,7 @@
   import { UserEntity } from "~~/mvc/entities/user";
 
   const { isSignedIn, userId, isLoaded } = useAuth();
+  const requestFetch = useRequestFetch();
 
   const isFirstAppInteraction = useCookie(FIRST_INTERACTION_COOKIE, {
     default: () => "true",
@@ -18,11 +19,11 @@
 
   // WARNING: Must never be accessed
   const userStatus = useState<IUserMeta["status"]>(READ_ONLY_USER_STATUS);
-  
+
   await callOnce(async () => {
     // FIX: Must throw if api shape response is not what we expect
     if (isSignedIn.value) {
-      const api = await $fetch<{ data: UserEntity["_status"] }>(
+      const api = await requestFetch<{ data: UserEntity["_status"] }>(
         "/api/user/" + userId.value + "/status",
       ).catch((e) => console.log(e));
 
@@ -63,6 +64,7 @@
 
       <template v-if="!isSignedIn">
         <AppWizardStartUp>
+          <SignUpButton>Sign up here</SignUpButton>
           <SignInButton
             class="flex items-center gap-x-2 text-neutral-grey-1300 cursor-pointer hover:text-accent-one-1100"
             title="Sign in to app"
