@@ -8,11 +8,25 @@ import {
   NotFoundResponse,
   JsonResponse,
   SilentSuccessResponse,
+  InternalServerErrorResponse,
 } from "./base";
+import { UserEntity } from "../entities/user";
 
 interface IReadUserArgs {
   userId: string;
   intent?: "GET_STATUS" | "GET_PERMISSIONS";
+}
+
+interface IReadUserStatusArgs extends IReadUserArgs {
+  intent: "GET_STATUS";
+}
+
+interface IReadUserPermissionsArgs extends IReadUserArgs {
+  intent: "GET_PERMISSIONS";
+}
+
+interface IReadUserDefaultArgs extends IReadUserArgs {
+  intent?: undefined;
 }
 
 const log = createLogger("mvc.controllers.user");
@@ -29,6 +43,44 @@ export class UserController extends BaseController {
     return new BadRequestResponse("Not implemented");
   }
 
+  public async list() {
+    try {
+      const users = await this.service.listAll();
+      return new JsonResponse({ data: users });
+    } catch (error) {
+      this.logError(error, {
+        origin: "controllers.user.list",
+      });
+      return this.mapErrorResponse(error, {
+        origin: "controllers.user.list",
+      });
+    }
+  }
+
+  public async read(
+    args: IReadUserStatusArgs,
+  ): Promise<
+    | JsonResponse<{ data: UserEntity["status"] }>
+    | BadRequestResponse
+    | InternalServerErrorResponse
+    | NotFoundResponse
+  >;
+  public async read(
+    args: IReadUserPermissionsArgs,
+  ): Promise<
+    | JsonResponse<{ data: UserEntity["permissions"] }>
+    | BadRequestResponse
+    | InternalServerErrorResponse
+    | NotFoundResponse
+  >;
+  public async read(
+    args: IReadUserDefaultArgs,
+  ): Promise<
+    | JsonResponse<{ data: ReturnType<UserMapper["toDto"]> }>
+    | BadRequestResponse
+    | InternalServerErrorResponse
+    | NotFoundResponse
+  >;
   public async read(args: IReadUserArgs) {
     try {
       const user = await this.service.readUser(args.userId);
