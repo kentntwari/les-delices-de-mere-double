@@ -1,4 +1,6 @@
+// import { EventHandler } from "h3";
 import { clerkMiddleware } from "@clerk/nuxt/server";
+
 import { BasePolicy } from "~~/mvc/policies/base";
 import { OrderPolicy } from "~~/mvc/policies/order";
 import { MenuPolicy } from "~~/mvc/policies/menu";
@@ -30,18 +32,6 @@ function checkPermission(policy: BasePolicy, method: string): void {
 }
 
 export default clerkMiddleware(async (event) => {
-  log.info(
-    {
-      path: event.path,
-      params: { userId: event.context.auth().userId },
-      method: event.method,
-    },
-    "Policy middleware invoked",
-  );
-
-  const { userId } = event.context.auth();
-  if (!userId) return;
-
   // Skip policy check for user-specific endpoints (status/permissions)
   // These are used for initial auth and don't need policy enforcement
   if (event.path.startsWith("/api/user/")) return;
@@ -53,6 +43,17 @@ export default clerkMiddleware(async (event) => {
 
   // Only run policy checks for protected API routes
   if (!isApiItemPath && !isApiOrderPath) return;
+
+  log.info(
+    {
+      path: event.path,
+      params: { userId: event.context.auth().userId },
+      method: event.method,
+    },
+    "Policy middleware invoked",
+  );
+
+  const userId = event.context.auth().userId as string;
 
   const userService = new UserService();
   const user = await userService.readUser(userId).catch((e) => {

@@ -14,20 +14,7 @@ export default defineEventHandler(async (event) => {
       "POST REQUEST RECEIVED: Creating order",
     );
 
-    const userId = event.context.auth().userId;
-
-    if (!userId) {
-      log.warn(
-        event.path,
-        event.method,
-        { userId },
-        "POST REQUEST Missing userId",
-      );
-      throw createError({
-        statusCode: 401,
-        message: "not authenticated",
-      });
-    }
+    const userId = event.context.auth().userId as string;
 
     const r = await new OrderController(toWebRequest(event))
       .promoteUserId(userId)

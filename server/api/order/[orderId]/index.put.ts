@@ -12,20 +12,7 @@ const cache = new CacheUtil(useStorage("cache"));
 
 export default defineEventHandler(async (event) => {
   try {
-    const userId = event.context.auth().userId;
-
-    if (!userId) {
-      log.warn(
-        event.path,
-        event.method,
-        { userId },
-        "PUT REQUEST Missing userId",
-      );
-      throw createError({
-        statusCode: 401,
-        message: "not authenticated",
-      });
-    }
+    const userId = event.context.auth().userId as string;
 
     const orderId = getRouterParam(event, "orderId");
     const query = getQuery(event);
