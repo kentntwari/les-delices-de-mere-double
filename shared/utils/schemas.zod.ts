@@ -223,6 +223,7 @@ export const handleOrderIntentsSchema = z.enum([
   "get-order-customer",
   "get-order-count-metadata",
   "get-order-delivery-details",
+  "get-order-comments-details",
   "get-order-timeline",
   "mark-as-paid",
   "mark-as-unpaid",
