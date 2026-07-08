@@ -1,11 +1,13 @@
-import { H3Event } from "h3";
+import { type H3Event } from "h3";
+
 import { createRequestLogger } from "~~/server/utils/logger";
 import { JsonResponse } from "~~/mvc/controllers/base";
-import { CustomerController } from "~~/mvc/controllers/customer";
 import { OrderController } from "~~/mvc/controllers/order";
 import { type IApiOrderData } from "~~/shared/types";
+import { DateUtils } from "~~/shared/utils/date";
 
 const log = createRequestLogger("server.api.order.[orderId].index.get.ts");
+const ORDER_CACHE_MAX_AGE = 60 * 30;
 
 export default defineEventHandler(async (event) => {
   try {
@@ -27,42 +29,53 @@ export default defineEventHandler(async (event) => {
       });
     }
 
-    const request = toWebRequest(event);
-    const orderController = new OrderController(request);
-    const customerController = new CustomerController(request);
-
-    const orderData = await orderController.read(orderId);
-
-    if (!(orderData instanceof JsonResponse)) return treatErrors(orderData);
-
-    const [customerInfo, deliveryInfo, timelineInfo] = await retrieveDetails(
-      event,
-      customerController,
-      orderController,
-      orderId,
+    log.info(
+      event.path,
+      event.method,
+      { params: { orderId } },
+      "GET REQUEST RECEIVED: Fetching order preview and count metadata",
     );
+
+    const [preview, count, comments] = await Promise.all([
+      cachedOrderPreviewPayload(event, orderId),
+      cachedOrderCountPayload(event, orderId),
+      event.$fetch(`/api/order/${orderId}/comments`),
+    ]);
+
+    const resolveCountMetadata = !count?.data ? null : count.data;
 
     return {
       data: {
-        id: orderData.data.data.id,
-        status: orderData.data.data.status,
-        paymentStatus: orderData.data.data.paymentStatus,
-        items: orderData.data.data.items,
-        total: orderData.data.data.total,
+        id: preview.data.order.id,
+        status: preview.data.order.status,
+        paymentStatus: preview.data.order.paymentStatus,
+        items: preview.data.order.items,
+        total: preview.data.order.total,
         _meta: {
-          customer: !customerInfo
+          _itemsCount: resolveCountMetadata
+            ? parseInt(resolveCountMetadata.items)
+            : preview.data.order.items.length,
+          _commentsCount: resolveCountMetadata
+            ? parseInt(resolveCountMetadata.comments)
+            : preview.data.comments.length,
+          _logsCount: resolveCountMetadata
+            ? parseInt(resolveCountMetadata.logs)
+            : preview.data.logs.length,
+
+          logs: [...preview.data.logs],
+
+          comments: comments ?? [],
+
+          customer: {
+            ...preview.data.customer,
+          },
+          delivery: !preview.data.delivery
             ? null
-            : {
-                id: customerInfo.id,
-                name: customerInfo.fullName,
-              },
-          delivery: !deliveryInfo
-            ? null
-            : deliveryInfo.isRequested
+            : preview.data.delivery.isRequested
               ? {
                   status: "isRequested",
                   fees: {
-                    total: `${deliveryInfo.fee}`,
+                    total: `${preview.data.delivery.fee}`,
                   },
                 }
               : {
@@ -71,118 +84,110 @@ export default defineEventHandler(async (event) => {
                     total: "0",
                   },
                 },
-          createdAt: timelineInfo?.createdAt ?? null,
-          updatedAt: timelineInfo?.updatedAt ?? null,
+          createdAt: preview.data.timeline.createdAt,
+          updatedAt: preview.data.timeline.updatedAt,
         },
       } satisfies IApiOrderData,
     };
   } catch (error) {
-    return treatErrors(error);
+    log.error(
+      event.path,
+      event.method,
+      { err: error, params: { orderId: getRouterParam(event, "orderId") } },
+      "GET REQUEST FAILED: Failed to fetch order details",
+    );
+    return treatErrors(error, "server/api/order/[orderId]/index.get.ts");
   }
 });
 
-function retrieveDetails(
-  event: H3Event,
-  customerController: CustomerController,
-  orderController: OrderController,
-  orderId: string,
-) {
-  return Promise.all([
-    (async () => {
-      const customerResult = await orderController.handleIntent(
-        "get-order-customer",
-        orderId,
+const cachedOrderPreviewPayload = defineCachedFunction(
+  async (event: H3Event, orderId: string) => {
+    try {
+      const response = await new OrderController(
+        toWebRequest(event),
+      ).extractPreview(orderId);
+
+      if (response instanceof JsonResponse)
+        return {
+          data: {
+            ...response.data.data,
+            timeline: {
+              createdAt: DateUtils.convertDate(
+                new Date(response.data.data.timeline.createdAt),
+              ),
+              updatedAt: DateUtils.convertDate(
+                new Date(response.data.data.timeline.updatedAt),
+              ),
+            },
+          } satisfies typeof response.data.data,
+        };
+
+      log.warn(
+        event.path,
+        event.method,
+        {
+          params: { orderId },
+          status: response.status,
+          message: response.message,
+        },
+        "CACHE PREVIEW MISS WITH CONTROLLER ERROR RESPONSE",
       );
 
-      const customerId =
-        customerResult instanceof JsonResponse
-          ? customerResult.data.data.id
-          : null;
+      throw response;
+    } catch (error) {
+      log.error(
+        event.path,
+        event.method,
+        { err: error, params: { orderId } },
+        "CACHE PREVIEW FAILED: Unhandled error during cached preview fetch",
+      );
+      throw error;
+    }
+  },
+  {
+    maxAge: ORDER_CACHE_MAX_AGE,
+    swr: true,
+    name: "order",
+    getKey: (event: H3Event, orderId: string) => `order_preview_${orderId}`,
+  },
+);
 
-      if (!customerId) return null;
+const cachedOrderCountPayload = defineCachedFunction(
+  async (event: H3Event, orderId: string) => {
+    try {
+      const response = await new OrderController(
+        toWebRequest(event),
+      ).handleIntent("get-order-count-metadata", orderId);
 
-      try {
-        const result = await customerController.read(customerId);
+      if (response instanceof JsonResponse) return response.data;
 
-        if (!(result instanceof JsonResponse)) {
-          treatErrors(result);
-          return null;
-        }
+      log.warn(
+        event.path,
+        event.method,
+        {
+          params: { orderId },
+          status: response.status,
+          message: response.message,
+        },
+        "CACHE COUNT MISS WITH CONTROLLER ERROR RESPONSE",
+      );
 
-        return {
-          id: customerId,
-          fullName: result.data.data.fullName,
-          phone: result.data.data.phone,
-          email: result.data.data.email,
-        };
-      } catch (error) {
-        log.warn(
-          event.path,
-          event.method,
-          {
-            group: "orders",
-            orderId,
-            customerId,
-          },
-          "GET REQUEST: Failed to resolve customer metadata for order",
-        );
+      throw response;
+    } catch (error) {
+      log.error(
+        event.path,
+        event.method,
+        { err: error, params: { orderId } },
+        "CACHE COUNT FAILED: Unhandled error during cached metadata fetch",
+      );
 
-        return null;
-      }
-    })(),
-    (async () => {
-      try {
-        const result = await orderController.handleIntent(
-          "get-order-delivery-details",
-          orderId,
-        );
-
-        if (!(result instanceof JsonResponse)) {
-          treatErrors(result);
-          return null;
-        }
-
-        return result.data.data;
-      } catch (error) {
-        log.warn(
-          event.path,
-          event.method,
-          {
-            group: "orders",
-            orderId,
-          },
-          "GET REQUEST: Failed to resolve delivery metadata for order",
-        );
-
-        return null;
-      }
-    })(),
-    (async () => {
-      try {
-        const result = await orderController.handleIntent(
-          "get-order-timeline",
-          orderId,
-        );
-
-        if (!(result instanceof JsonResponse)) {
-          treatErrors(result);
-          return null;
-        }
-
-        return result.data.data;
-      } catch (error) {
-        log.warn(
-          event.path,
-          event.method,
-          {
-            group: "orders",
-            orderId,
-          },
-          "GET REQUEST: Failed to resolve timeline metadata for order",
-        );
-
-        return null;
-      }
-    })(),
-  ]);
-}
+      throw error;
+    }
+  },
+  {
+    maxAge: ORDER_CACHE_MAX_AGE,
+    swr: true,
+    name: "order",
+    getKey: (event: H3Event, orderId: string) => `order_count_${orderId}`,
+  },
+);
