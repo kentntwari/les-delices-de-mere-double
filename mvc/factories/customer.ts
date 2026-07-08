@@ -5,6 +5,8 @@ import {
   type TCustomerSchema as TCustomerDTO,
 } from "../../shared/utils/schemas.zod";
 import { ApplicationError } from "../errors.appwide";
+import type { TOrderPreviewRepositoryModel } from "~~/shared/types";
+import type { CustomerModel } from "../repository/customer";
 
 export class CustomerFactory extends BaseFactory<TCustomerDTO, CustomerEntity> {
   public build(data: TCustomerDTO): CustomerEntity {
@@ -47,5 +49,18 @@ export class CustomerFactory extends BaseFactory<TCustomerDTO, CustomerEntity> {
           },
         );
     }
+  }
+
+  static fromOrderPreview(model: TOrderPreviewRepositoryModel): CustomerModel {
+    return {
+      id: model.customer?.id || "UNKNOWN_CUSTOMER_ID",
+      name: model.customer?.name || "UNKNOWN_CUSTOMER_NAME",
+      email: null,
+      // Preview queries only load lightweight customer data, so use a valid
+      // fallback number that survives entity/DTO normalization.
+      phone: "+10000000000",
+      whatsappPhoneNumber: "+10000000000",
+      homeAddressId: null,
+    };
   }
 }
