@@ -44,15 +44,9 @@ export type OrderItemModel = Prisma.OrderItemGetPayload<{
   };
 }>;
 
-export type OrderCommentModel = Prisma.OrderCommentGetPayload<{
-  include: {
-    user: { select: { id: true; name: true } };
-  };
-  omit: {
-    likedBy: true;
-    userId: true;
-  };
-}>;
+export type OrderCommentModel = Prisma.OrderCommentGetPayload<{}> & {
+  user_name: string | null;
+};
 
 export type OrderLogModel = Prisma.OrderLogGetPayload<{}>;
 
@@ -149,21 +143,22 @@ export class OrderRepository implements IOrderRepository {
     }
   }
 
-  async getComments(orderId: string) {
+  async getComments(orderId: string): Promise<OrderCommentModel[]> {
     try {
-      return await this.db.orderComment.findMany({
+      const raw = await this.db.orderComment.findMany({
         where: { orderId },
         orderBy: { createdAt: "asc" },
         take: 10,
         include: {
           user: {
             select: {
-              id: true,
               name: true,
             },
           },
         },
       });
+
+      return raw.map((c) => ({ ...c, user_name: c.user?.name ?? null }));
     } catch (error) {
       throw new DatabaseError(RepositoryFailuresMessages.getComments, {
         operation: "getComments",
@@ -173,38 +168,49 @@ export class OrderRepository implements IOrderRepository {
     }
   }
 
+  async getCommentsWithDetails(orderId: string): Promise<OrderCommentModel[]> {
+    try {
+      const comments = await this.db.orderComment.findMany({
+        where: { orderId: { equals: orderId, mode: "insensitive" } },
+        include: {
+          user: true,
+        },
+      });
+      return comments.map((c) => ({ ...c, user_name: c.user?.name ?? null }));
+    } catch (error) {
+      throw new DatabaseError("Failed to retrieve comment details", {
+        operation: "getCommentDetails",
+        error,
+      });
+    }
+  }
+
   async createComment(
     orderId: string,
-    comment: string,
     userId: string,
+    comment: string,
   ): Promise<OrderCommentModel> {
     try {
-      const c = await this.db.orderComment.create({
+      const model = await this.db.orderComment.create({
         data: {
           comment,
-          orderId,
-          userId,
+          order: {
+            connect: { id: orderId.toLocaleUpperCase() },
+          },
+          user: {
+            connect: { id: userId },
+          },
         },
         include: {
           user: {
             select: {
-              id: true,
               name: true,
             },
           },
         },
       });
 
-      await this.db.orderComment.update({
-        where: { id: c.id },
-        data: {
-          user: {
-            connect: { id: userId },
-          },
-        },
-      });
-
-      return c;
+      return { ...model, user_name: model.user?.name ?? null };
     } catch (error) {
       throw new DatabaseError("Failed to create order comment in database", {
         operation: "createComment",
@@ -263,16 +269,24 @@ export class OrderRepository implements IOrderRepository {
 
     try {
       const c = await this.db.$queryRaw<OrderAggregatesRow[]>`SELECT
-                  o.id AS order_id,
-                  COUNT(DISTINCT oc.id) AS comment_count,
-                  COUNT(DISTINCT ol.id) AS log_count,
-                  COUNT(DISTINCT oi.id) AS item_count
+                o.id AS order_id,
+                (
+                  SELECT COUNT(*)
+                  FROM order_comments AS oc
+                  WHERE oc.order_id = o.id
+                ) AS comment_count,
+                (
+                  SELECT COUNT(*)
+                  FROM order_logs AS ol
+                  WHERE ol.order_id = o.id
+                ) AS log_count,
+                (
+                  SELECT COUNT(*)
+                  FROM order_items AS oi
+                  WHERE oi.order_id = o.id
+                ) AS item_count
               FROM orders AS o
-              LEFT JOIN order_comments AS oc ON oc.order_id = o.id
-              LEFT JOIN order_logs AS ol ON ol.order_id = o.id
-              LEFT JOIN order_items AS oi ON oi.order_id = o.id
               WHERE o.id = ${orderId}
-              GROUP BY o.id
               ORDER BY o.id;`;
 
       return c.map((row) => ({
@@ -331,9 +345,65 @@ export class OrderRepository implements IOrderRepository {
     }
   }
 
+  async getPreview(orderId: string) {
+    try {
+      return await this.db.order.findFirst({
+        where: { id: { equals: orderId, mode: "insensitive" } },
+        omit: { deliveryAddressId: true, customerId: true },
+        include: {
+          items: {
+            omit: {
+              orderId: true,
+              itemId: true,
+              createdAt: true,
+              updatedAt: true,
+            },
+            include: {
+              item: {
+                select: { id: true, title: true, unitPrice: true, slug: true },
+              },
+            },
+          },
+          customer: {
+            select: { id: true, name: true },
+          },
+          orderComments: {
+            take: 10,
+            orderBy: { createdAt: "asc" },
+            omit: {
+              likedBy: true,
+              orderId: true,
+              userId: true,
+              taggedUserId: true,
+            },
+            include: {
+              user: {
+                select: {
+                  id: true,
+                  name: true,
+                },
+              },
+            },
+          },
+          logs: {
+            take: 10,
+            orderBy: { createdAt: "asc" },
+            omit: { orderId: true },
+          },
+        },
+      });
+    } catch (error) {
+      throw new DatabaseError("Failed to retrieve order preview data", {
+        operation: "getPreview",
+        orderId,
+        error,
+      });
+    }
+  }
+
   async create(
     customerId: string,
-    items: ReturnType<typeof OrderTransformer.toCreateOrderParams>,
+    items: ReturnType<typeof OrderTransformer.toCreateParams>,
     deliveryInfo?: TCreateOrderFormSchema["delivery"],
   ) {
     let scopedDeliveryRepoWithComputedStates: DeliveryRepository;
@@ -496,7 +566,7 @@ export class OrderRepository implements IOrderRepository {
 
   async update(
     orderId: string,
-    data: Omit<ReturnType<typeof OrderTransformer.toOrderUpdateParams>, "id">,
+    data: Omit<ReturnType<typeof OrderTransformer.toUpdateParams>, "id">,
   ) {
     try {
       let scopedDeliveryRepoWithComputedStates: DeliveryRepository;
