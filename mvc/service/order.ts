@@ -1,6 +1,6 @@
 import { BaseService } from "./base";
 import { OrderRepository, type OrderModel } from "../repository/order";
-import { OrderMapper } from "../mapper/order";
+import { OrderMapper, type TOrderCommentDetailsDTO } from "../mapper/order";
 import { OrderLogsRepository } from "../repository/logs";
 import { OrderTransformer } from "../transformers/order";
 import { createLogger } from "../../server/utils/logger";
@@ -9,7 +9,6 @@ import { OrderFactory } from "../factories/order";
 import { ApplicationError, NotFoundError } from "../errors.appwide";
 import { CustomerService } from "./customer";
 import { UserService } from "./user";
-import { DateUtils } from "~~/shared/utils/date";
 
 const log = createLogger("mvc.service.order");
 
@@ -48,11 +47,14 @@ export class OrderService extends BaseService {
         else this.author = user.fullName;
       })
       .catch((error) => {
-        throw new ApplicationError(ServiceFailuresMessages.getUser, {
-          operation: "service.order.defineAuthor",
-          userId,
-          error,
-        });
+        log.error(
+          {
+            err: error instanceof Error ? error : new Error(String(error)),
+            operation: "service.order.defineAuthor",
+            userId,
+          },
+          ServiceFailuresMessages.getUser,
+        );
       });
 
     return this;
@@ -113,70 +115,6 @@ export class OrderService extends BaseService {
     }
   }
 
-  async listComments(orderId: string) {
-    try {
-      const model = await this.repository.getComments(orderId);
-      return this.mapper.toCommentEntityList(model);
-    } catch (error) {
-      this.defaultMapError(error, "service.order.listComments");
-      throw error;
-    }
-  }
-
-  async createComment(orderId: string, userId: string, data: unknown) {
-    try {
-      const { comment, createdAt } = this.factory.validateCreateComment(data);
-
-      const model = await this.repository.createComment(
-        orderId,
-        comment,
-        userId,
-      );
-      
-      return this.mapper.toCommentEntity(model);
-    } catch (error) {
-      this.defaultMapError(error, "service.order.createComment");
-      throw error;
-    }
-  }
-
-  async listLogs(orderId: string) {
-    try {
-      const model = await this.repository.getLogs(orderId);
-      return this.mapper.toLogEntityList(model);
-    } catch (error) {
-      this.defaultMapError(error, "service.order.listLogs");
-      throw error;
-    }
-  }
-
-  async listCountMetadata(orderId: string) {
-    try {
-      const model = await this.repository.getCountMetadata(orderId);
-      return OrderTransformer.toCountMetadata(model);
-    } catch (error) {
-      throw new ApplicationError("Failed to retrieve order count metadata", {
-        operation: "service.order.listCountMetadata",
-        orderId,
-        error,
-      });
-    }
-  }
-
-  async listDeliveryDetails(orderId: string) {
-    try {
-      const d = await this.repository.getDeliveryDetails(orderId);
-
-      return OrderTransformer.toDeliveryDetails(d);
-    } catch (error) {
-      throw new ApplicationError("Failed to retrieve order delivery details", {
-        operation: "service.order.listDeliveryDetails",
-        orderId,
-        error,
-      });
-    }
-  }
-
   async create(data: unknown) {
     let orderId: string | null = null;
     let isOrderCreated = false;
@@ -208,7 +146,7 @@ export class OrderService extends BaseService {
 
       const order = await this.repository.create(
         currentCX.id,
-        OrderTransformer.toCreateOrderParams(items),
+        OrderTransformer.toCreateParams(items),
         delivery,
       );
 
@@ -247,7 +185,7 @@ export class OrderService extends BaseService {
       const { id, items, delivery } = this.factory.validateUpdateOrder(data);
       const order = await this.repository.update(
         id,
-        OrderTransformer.toOrderUpdateParams({ id, items, delivery }),
+        OrderTransformer.toUpdateParams({ id, items, delivery }),
       );
       return this.mapper.toEntity(order);
     } catch (error) {
@@ -364,15 +302,116 @@ export class OrderService extends BaseService {
 
   async getTimeline(
     orderId: string,
-  ): Promise<{ createdAt: string; updatedAt: string }> {
+  ): Promise<{ createdAt: Date; updatedAt: Date }> {
     try {
       const order = await this.repository.getTimeline(orderId);
       return {
-        createdAt: DateUtils.convertDate(order.createdAt),
-        updatedAt: DateUtils.convertDate(order.updatedAt),
+        createdAt: order.createdAt,
+        updatedAt: order.updatedAt,
       };
     } catch (error) {
-      return { createdAt: "", updatedAt: "" };
+      throw new ApplicationError("Failed to retrieve order timeline", {
+        operation: "service.order.getTimeline",
+        orderId,
+        error,
+      });
+    }
+  }
+
+  async listComments(orderId: string) {
+    try {
+      const model = await this.repository.getComments(orderId);
+      return this.mapper.toCommentEntityList(model);
+    } catch (error) {
+      this.defaultMapError(error, "service.order.listComments");
+      throw error;
+    }
+  }
+
+  async listCommentsDetails(
+    orderId: string,
+  ): Promise<TOrderCommentDetailsDTO[]> {
+    try {
+      const model = await this.repository.getCommentsWithDetails(orderId);
+
+      return model.map((comment) => ({
+        ...comment,
+        user_name: comment.user_name ?? undefined,
+        taggedUsers: comment.taggedUserId,
+        createdAt: comment.createdAt.toISOString(),
+      }));
+    } catch (error) {
+      this.defaultMapError(error, "service.order.listCommentTaggedUsers");
+      throw error;
+    }
+  }
+
+  async createComment(orderId: string, userId: string, data: unknown) {
+    try {
+      const { comment } = this.factory.validateCreateComment(data);
+
+      const model = await this.repository.createComment(
+        orderId,
+        userId,
+        comment,
+      );
+      return this.mapper.toCommentEntity(model);
+    } catch (error) {
+      this.defaultMapError(error, "service.order.createComment");
+      throw error;
+    }
+  }
+
+  async listLogs(orderId: string) {
+    try {
+      const model = await this.repository.getLogs(orderId);
+      return this.mapper.toLogEntityList(model);
+    } catch (error) {
+      this.defaultMapError(error, "service.order.listLogs");
+      throw error;
+    }
+  }
+
+  async listCountMetadata(orderId: string) {
+    try {
+      const model = await this.repository.getCountMetadata(orderId);
+      return OrderTransformer.toCountMetadata(model);
+    } catch (error) {
+      throw new ApplicationError("Failed to retrieve order count metadata", {
+        operation: "service.order.listCountMetadata",
+        orderId,
+        error,
+      });
+    }
+  }
+
+  async listDeliveryDetails(orderId: string) {
+    try {
+      const d = await this.repository.getDeliveryDetails(orderId);
+      return OrderTransformer.toDeliveryDetails(d);
+    } catch (error) {
+      throw new ApplicationError("Failed to retrieve order delivery details", {
+        operation: "service.order.listDeliveryDetails",
+        orderId,
+        error,
+      });
+    }
+  }
+
+  async getPreview(orderId: string) {
+    try {
+      const model = await this.repository.getPreview(orderId);
+
+      if (!model)
+        throw new NotFoundError("Order not found", {
+          operation: "service.order.listPreview",
+          orderId,
+        });
+
+      return OrderTransformer.toPreview(model!);
+    } catch (error) {
+      this.defaultMapError(error, "service.order.getPreview");
+      throw error;
     }
   }
 }
