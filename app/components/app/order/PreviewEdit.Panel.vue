@@ -134,7 +134,7 @@
   const popoverEditorKey = ref(nanoid());
   const popoverAddressKey = ref(nanoid());
 
-  const logs = useAppOrderLogs(
+  const [, logs] = useAppOrder(
     computed(() => currentPreviewedOrder.value?.id),
     previewedTab,
   );
@@ -160,7 +160,7 @@
     setValues,
     resetForm: resetEditForm,
     handleSubmit,
-  } = useForm({
+  } = useForm<TUpdateOrderFormSchema>({
     name: "edit-order-form_" + nanoid(),
     validationSchema: toTypedSchema(updateOrderFormSchema),
     initialValues: {
@@ -193,7 +193,6 @@
   }
 
   const isDeliveryAddressEdited = computed(() => {
-    ``;
     if (!values.delivery) return false;
 
     const originalAddress = previewedMetadata.value?.delivery.address;
