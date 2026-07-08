@@ -275,7 +275,25 @@ export abstract class BaseController {
 
   protected logError(error: unknown, context?: object): void {
     const errorObj = error instanceof Error ? error : new Error(String(error));
-    log.error({ err: errorObj, ...context }, errorObj.message);
+    const originalError =
+      errorObj instanceof ApplicationError && errorObj.context.originalError;
+
+    log.error(
+      {
+        err: errorObj,
+        ...(originalError instanceof Error
+          ? {
+              originalError: {
+                name: originalError.name,
+                message: originalError.message,
+                stack: originalError.stack,
+              },
+            }
+          : {}),
+        ...context,
+      },
+      errorObj.message,
+    );
   }
 
   protected async authenticate(): Promise<void> {}
