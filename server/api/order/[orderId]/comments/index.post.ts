@@ -8,7 +8,7 @@ const log = createRequestLogger("server.api.order.[orderId].comments.post.ts");
 export default defineEventHandler(async (event) => {
   try {
     const { orderId } = event.context.params as { orderId: string };
-    const userId = event.context.auth().userId as string;
+    const { userId } = event.context.auth();
 
     log.info(
       event.path,
@@ -18,7 +18,7 @@ export default defineEventHandler(async (event) => {
     );
 
     const r = await new OrderController(toWebRequest(event))
-      .promoteUserId(userId)
+      .promoteUserId(userId!) //Because of previous middleware check
       .createComment(orderId);
 
     if (r instanceof JsonResponse) {
@@ -79,15 +79,18 @@ export default defineEventHandler(async (event) => {
         id: c.id,
         comment: c.comment,
         _meta: {
-          mentionedUsers: [],
+          mentionedUsers: c.taggedUsers,
+          source: c.source_comment,
           createdAt: c.createdAt,
-          createdBy: "You",
-          likedCount: 0,
+          createdBy: c.user_name || "System User",
+          likedCount: c.likedCount,
         },
       });
+
+      return sendNoContent(event);
     }
 
-    return sendNoContent(event);
+    return treatResponses(event, r);
   } catch (error) {
     treatErrors(error);
   }
