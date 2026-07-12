@@ -59,6 +59,7 @@ export interface IApiOrderCommentData {
   id: string;
   comment: string;
   _meta: {
+    source: string | null;
     mentionedUsers: string[];
     likedCount: number;
     createdBy: string;
