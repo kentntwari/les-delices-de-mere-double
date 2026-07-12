@@ -96,6 +96,12 @@ export const createOrderCommentSchema = orderCommentSchema
       .string()
       .min(1, "User ID is required to create a comment")
       .optional(),
+    metadata: z
+      .object({
+        sourceId: orderCommentSchema.shape.id.nullable(),
+        tagged: z.array(userSchema.shape.id).default([]),
+      })
+      .optional(),
   });
 
 const digitsOnly = (val: string) => val.replace(/\D/g, "");
