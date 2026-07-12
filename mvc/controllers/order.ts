@@ -188,14 +188,12 @@ export class OrderController extends BaseController {
         return new BadRequestResponse("User not found");
       }
 
-      const entity = await this.service.createComment(
-        orderId,
-        user.id,
-        await this.getBody(),
-      );
-
-      return new JsonResponse<{ data: TOrderCommentDTO }>({
-        data: this.mapper.toCommentDto(entity),
+      return new JsonResponse({
+        data: await this.service.createComment(
+          orderId,
+          user.id,
+          await this.getBody(),
+        ),
       });
     } catch (error) {
       this.logError(error, {

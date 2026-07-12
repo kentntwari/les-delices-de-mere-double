@@ -332,14 +332,48 @@ export class OrderService extends BaseService {
     orderId: string,
   ): Promise<TOrderCommentDetailsDTO[]> {
     try {
-      const model = await this.repository.getCommentsWithDetails(orderId);
+      const model = await this.repository.getComments(orderId);
+      const dto = this.mapper.fromCommentModelList(model);
 
-      return model.map((comment) => ({
-        ...comment,
-        user_name: comment.user_name ?? undefined,
-        taggedUsers: comment.taggedUserId,
-        createdAt: comment.createdAt.toISOString(),
-      }));
+      const [sourceComment, taggedUsers] = await Promise.all([
+        this.repository.getCommentSource(
+          orderId,
+          model
+            .map((c) => c.source_id)
+            .filter((id): id is string => id !== null),
+        ),
+        this.repository.getCommentTaggedUsers(
+          orderId,
+          model.map((c) => c.id),
+          model.flatMap((c) => c.taggedUserId),
+        ),
+      ]);
+
+      const sourceCommentById = new Map(
+        sourceComment.map((comment) => [comment.id, comment.comment] as const),
+      );
+
+      const taggedUsersByCommentId = new Map<string, string[]>();
+
+      for (const taggedUser of taggedUsers) {
+        const current = taggedUsersByCommentId.get(taggedUser.commentId) ?? [];
+        current.push(taggedUser.name);
+        taggedUsersByCommentId.set(taggedUser.commentId, current);
+      }
+
+      return dto.map((commentDto, index) => {
+        const sourceId = model[index]?.source_id;
+
+        return {
+          ...commentDto,
+          source_comment:
+            sourceId && sourceCommentById.has(sourceId)
+              ? (sourceCommentById.get(sourceId) ?? commentDto.source_comment)
+              : commentDto.source_comment,
+          taggedUsers:
+            taggedUsersByCommentId.get(commentDto.id) ?? commentDto.taggedUsers,
+        };
+      });
     } catch (error) {
       this.defaultMapError(error, "service.order.listCommentTaggedUsers");
       throw error;
@@ -348,14 +382,19 @@ export class OrderService extends BaseService {
 
   async createComment(orderId: string, userId: string, data: unknown) {
     try {
-      const { comment } = this.factory.validateCreateComment(data);
+      const { comment, metadata } = this.factory.validateCreateComment(data);
 
       const model = await this.repository.createComment(
         orderId,
         userId,
         comment,
+        {
+          sourceId: metadata?.sourceId ?? null,
+          taggedUserIds: metadata?.tagged ?? [],
+        },
       );
-      return this.mapper.toCommentEntity(model);
+
+      return this.mapper.fromCommentModel(model);
     } catch (error) {
       this.defaultMapError(error, "service.order.createComment");
       throw error;

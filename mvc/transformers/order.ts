@@ -11,7 +11,13 @@ import {
 import { CustomerMapper } from "../mapper/customer";
 import { OrderMapper } from "../mapper/order";
 
-import { OrderRepository } from "../repository/order";
+import type {
+  IDbOrderComment,
+  OrderCommentModel,
+  OrderCountMetadataModel,
+  OrderDeliveryDetailsModel,
+  OrderPreviewModel,
+} from "../repository/order";
 
 const orderMapper = new OrderMapper();
 const cxMapper = new CustomerMapper();
@@ -33,11 +39,7 @@ export class OrderTransformer {
     }));
   }
 
-  static toCountMetadata(
-    model: Awaited<
-      ReturnType<typeof OrderRepository.prototype.getCountMetadata>
-    >,
-  ) {
+  static toCountMetadata(model: OrderCountMetadataModel) {
     if (model.length === 0) return null;
     return {
       comments: model.at(0)!.comment_count,
@@ -46,11 +48,7 @@ export class OrderTransformer {
     };
   }
 
-  static toDeliveryDetails(
-    model: Awaited<
-      ReturnType<typeof OrderRepository.prototype.getDeliveryDetails>
-    >,
-  ) {
+  static toDeliveryDetails(model: OrderDeliveryDetailsModel) {
     if (!model) return { isRequested: false };
     if (!this.hasRequestedDelivery(model.fees?.total))
       return { isRequested: false };
@@ -73,9 +71,7 @@ export class OrderTransformer {
     };
   }
 
-  static toPreview(
-    model: Awaited<ReturnType<typeof OrderRepository.prototype.getPreview>>,
-  ) {
+  static toPreview(model: OrderPreviewModel) {
     if (!model) return null;
     const o = orderMapper.toEntity(OrderFactory.fromPreview(model));
     const b = orderMapper.toCommentEntityList(
@@ -94,6 +90,20 @@ export class OrderTransformer {
         createdAt: model.createdAt.toISOString(),
         updatedAt: model.updatedAt.toISOString(),
       },
+    };
+  }
+
+  static toCommentModel(data: IDbOrderComment): OrderCommentModel {
+    return {
+      id: data.id,
+      source_id: data.source ?? null,
+      comment: data.comment,
+      createdAt: data.createdAt,
+      orderId: data.orderId,
+      userId: data.userId,
+      user_name: data.user?.name ?? null,
+      likedCount: data.likedCount,
+      taggedUserId: data.taggedUserId,
     };
   }
 }
