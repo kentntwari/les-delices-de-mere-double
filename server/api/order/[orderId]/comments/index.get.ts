@@ -48,6 +48,7 @@ export default defineCachedEventHandler(
             id: c.id,
             comment: c.comment,
             _meta: {
+              source: c.source_comment,
               mentionedUsers: c.taggedUsers,
               likedCount: c.likedCount,
               createdBy: c.user_name || "UNKNOWN USER",
