@@ -13,7 +13,13 @@ interface IOrderLogEntity extends Omit<
 > {}
 interface IOrderCommentEntity extends Omit<
   OrderCommentModel,
-  "user_name" | "taggedUserId" | "likedBy" | "likedCount" | "createdAt"
+  | "user_name"
+  | "source_id"
+  | "replies"
+  | "taggedUserId"
+  | "likedBy"
+  | "likedCount"
+  | "createdAt"
 > {}
 
 interface IOrderCommentOptions {
@@ -33,6 +39,7 @@ export class OrderCommentEntity implements IOrderCommentEntity {
   private _taggedUsers: string[] = [];
   private _likedBy: string[] = [];
   private _likedCount: number = 0;
+  private _sourceId: string | null = null;
 
   constructor(
     public readonly id: string,
@@ -49,6 +56,14 @@ export class OrderCommentEntity implements IOrderCommentEntity {
     return this._userName;
   }
 
+  get sourceId(): string | null {
+    return this._sourceId;
+  }
+
+  set sourceId(id: string | null) {
+    this._sourceId = id;
+  }
+
   set userName(name: string) {
     this.options.user.fullName = name;
     this._userName = this.options.user.fullName;
@@ -60,6 +75,14 @@ export class OrderCommentEntity implements IOrderCommentEntity {
 
   set likedCount(count: number) {
     this._likedCount = count;
+  }
+
+  get taggedUsers(): string[] {
+    return this._taggedUsers;
+  }
+
+  set taggedUsers(users: UserEntity["id"][]) {
+    this._taggedUsers = users;
   }
 }
 

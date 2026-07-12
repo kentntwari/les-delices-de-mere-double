@@ -24,16 +24,16 @@ export type TOrderLogDTO = Pick<OrderLogEntity, "message" | "createdAt">;
 
 export type TOrderCommentDTO = Pick<
   OrderCommentEntity,
-  "id" | "comment" | "userName" | "likedCount" | "createdAt"
+  "id" | "sourceId" | "comment" | "userName" | "likedCount" | "createdAt"
 >;
 
 type TTaggedUserId = string;
 export type TOrderCommentDetailsDTO = {
   id: string;
   user_name: string | undefined;
+  source_comment: string | null;
   comment: string;
   taggedUsers: TTaggedUserId[];
-  likedBy: TTaggedUserId[];
   likedCount: number;
   createdAt: string;
 };
@@ -152,8 +152,27 @@ export class OrderMapper extends BaseMapper<
     );
 
     e.userName = data.user_name || "";
+    e.sourceId = data.source_id || null;
+    e.taggedUsers = data.taggedUserId;
+    e.likedCount = data.likedCount;
 
     return e;
+  }
+
+  fromCommentModel(model: OrderCommentModel): TOrderCommentDetailsDTO {
+    return {
+      id: model.id,
+      comment: model.comment,
+      source_comment: null,
+      createdAt: model.createdAt.toISOString(),
+      likedCount: model.likedCount,
+      taggedUsers: [],
+      user_name: model.user_name || undefined,
+    };
+  }
+
+  fromCommentModelList(models: OrderCommentModel[]): TOrderCommentDetailsDTO[] {
+    return models.map((model) => this.fromCommentModel(model));
   }
 
   toCommentEntityList(data: OrderCommentModel[]): OrderCommentEntity[] {
@@ -164,6 +183,7 @@ export class OrderMapper extends BaseMapper<
     return {
       id: entity.id,
       comment: entity.comment,
+      sourceId: entity.sourceId,
       userName: entity.userName,
       likedCount: entity.likedCount,
       createdAt: entity.createdAt,

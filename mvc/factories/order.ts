@@ -229,15 +229,19 @@ export class OrderLogFactory extends OrderFactory {
 export class OrderCommentFactory extends OrderFactory {
   static fromOrderPreview(
     model: TOrderPreviewRepositoryModel,
+    options?: {
+      taggedUserId?: string[];
+    },
   ): OrderCommentModel[] {
     return model.orderComments.map((comment) => ({
       id: comment.id,
+      source_id: comment.source || null,
       orderId: model.id,
       userId: comment.user?.id || "UNKNOWN_USER_ID",
+      user_name: comment.user?.name || "UNKNOWN_USER_NAME",
       comment: comment.comment,
-      likedBy: [],
       likedCount: comment.likedCount,
-      taggedUserId: [],
+      taggedUserId: options?.taggedUserId || [],
       createdAt: comment.createdAt,
       updatedAt: new Date(),
     }));
