@@ -44,17 +44,6 @@ export type OrderItemModel = Prisma.OrderItemGetPayload<{
   };
 }>;
 
-export type OrderCommentModel = Prisma.OrderCommentGetPayload<{
-  omit: {
-    source: true;
-    replies: true;
-    likedBy: true;
-  };
-}> & {
-  user_name: string | null;
-  source_id: string | null;
-};
-
 export type OrderLogModel = Prisma.OrderLogGetPayload<{}>;
 
 export type OrderPreviewModel = Awaited<
@@ -75,29 +64,12 @@ export const RepositoryFailuresMessages = {
   createOrder: "Failed to create order in database",
   updateOrder: "Failed to update order in database",
   deleteOrder: "Failed to delete order from database",
-  getComments: "Failed to get order comments from database",
   getLogs: "Failed to get order logs from database",
   updateStatus: "Failed to update order status in database",
   updatePaymentStatus: "Failed to update order payment status in database",
 } as const;
 
-export interface IDbOrderComment extends Prisma.OrderCommentGetPayload<{
-  include: {
-    user: {
-      select: {
-        name: true;
-      };
-    };
-  };
-}> {}
-
 export interface IOrderRepository extends IBaseRepository<OrderModel> {
-  getComments(orderId: string): Promise<OrderCommentModel[]>;
-  createComment(
-    orderId: string,
-    userId: string,
-    comment: string,
-  ): Promise<OrderCommentModel>;
   getLogs(orderId: string): Promise<OrderLogModel[]>;
   getDeliveryDetails(
     orderId: string,
@@ -501,205 +473,6 @@ export class OrderRepository implements IOrderRepository {
         operation: "updatePaymentStatus",
         orderId,
         status,
-        error,
-      });
-    }
-  }
-
-  async createComment(
-    orderId: string,
-    userId: string,
-    comment: string,
-    metadata:
-      | { sourceId: string | null; taggedUserIds: string[] }
-      | undefined = undefined,
-  ): Promise<OrderCommentModel> {
-    try {
-      const model = await this.db.$transaction(async (tx) => {
-        await tx.$queryRaw`
-          SELECT id
-          FROM orders
-          WHERE LOWER(id) = LOWER(${orderId})
-          FOR UPDATE
-        `;
-
-        const commentsCount = await tx.orderComment.count({
-          where: {
-            orderId: {
-              equals: orderId,
-              mode: "insensitive",
-            },
-          },
-        });
-
-        if (commentsCount >= 10) {
-          throw new ApplicationError(
-            "Comment limit reached for this order. Only 10 comments are allowed.",
-            {
-              operation: "repository.order.createComment",
-              orderId,
-              userId,
-              commentsCount,
-            },
-            "repository.order.createComment",
-          );
-        }
-
-        return await tx.orderComment.create({
-          data: {
-            comment,
-            ...(metadata?.sourceId && { source: metadata.sourceId }),
-            ...(metadata?.taggedUserIds && {
-              taggedUserId: metadata.taggedUserIds,
-            }),
-            order: {
-              connect: { id: orderId.toLocaleUpperCase() },
-            },
-            user: {
-              connect: { id: userId },
-            },
-          },
-          include: {
-            user: {
-              select: {
-                name: true,
-              },
-            },
-          },
-        });
-      });
-
-      return OrderTransformer.toCommentModel(model);
-    } catch (error) {
-      if (error instanceof ApplicationError) throw error;
-      throw new DatabaseError("Failed to create order comment in database", {
-        operation: "createComment",
-        orderId,
-        error,
-      });
-    }
-  }
-
-  async getComments(orderId: string): Promise<OrderCommentModel[]> {
-    try {
-      const raw: IDbOrderComment[] = await this.db.orderComment.findMany({
-        where: { orderId: { equals: orderId, mode: "insensitive" } },
-        orderBy: { createdAt: "asc" },
-        take: 10,
-        include: {
-          user: {
-            select: {
-              name: true,
-            },
-          },
-        },
-      });
-
-      return raw.map(OrderTransformer.toCommentModel);
-    } catch (error) {
-      throw new DatabaseError(RepositoryFailuresMessages.getComments, {
-        operation: "getComments",
-        orderId,
-        error,
-      });
-    }
-  }
-
-  // TODO: Might need to use raw sql if it becomes tough to guarantee case insensitiveness
-  async getCommentSource(orderId: string, sourceId: string[]) {
-    try {
-      return await this.db.orderComment.findMany({
-        where: {
-          id: { in: sourceId },
-          orderId: { equals: orderId, mode: "insensitive" },
-        },
-        select: {
-          id: true,
-          comment: true,
-        },
-      });
-    } catch (error) {
-      throw new DatabaseError("Failed to retrieve comment source", {
-        operation: "getCommentSource",
-        orderId,
-        sourceId,
-        error,
-      });
-    }
-  }
-
-  // TODO: Might need to use raw sql if it becomes tough to guarantee case insensitiveness
-  async getCommentTaggedUsers(
-    orderId: string,
-    commentId: string[],
-    taggedUserIds: string[],
-  ): Promise<
-    {
-      id: string;
-      name: string;
-      commentId: string;
-    }[]
-  > {
-    if (commentId.length === 0 || taggedUserIds.length === 0) return [];
-
-    try {
-      const query = await this.db.orderComment.findMany({
-        where: {
-          id: { in: commentId },
-          orderId: { equals: orderId, mode: "insensitive" },
-          taggedUserId: { hasSome: taggedUserIds },
-        },
-        select: {
-          id: true,
-          taggedUserId: true,
-        },
-      });
-
-      if (query.length === 0) return [];
-
-      const resolvedTaggedUserIds = Array.from(
-        new Set(query.flatMap((comment) => comment.taggedUserId)),
-      );
-
-      // Uses raw SQL intentionally to keep OrderRepository self-contained
-      // and resolve tagged User ids without depending on UserRepository.
-
-      type TaggedUserRow = {
-        id: string;
-        name: string;
-      };
-
-      const users = await this.db.$queryRaw<TaggedUserRow[]>`
-        SELECT id, name
-        FROM "User"
-        WHERE LOWER(id) IN (${Prisma.join(
-          resolvedTaggedUserIds.map((id) => id.toLowerCase()),
-        )})
-      `;
-
-      const usersMap = new Map(
-        users.map((user) => [user.id.toLowerCase(), user] as const),
-      );
-
-      return query.flatMap((comment) =>
-        comment.taggedUserId.flatMap((taggedUserId) => {
-          const user = usersMap.get(taggedUserId.toLowerCase());
-
-          if (!user) return [];
-
-          return {
-            id: user.id,
-            name: user.name,
-            commentId: comment.id,
-          };
-        }),
-      );
-    } catch (error) {
-      throw new DatabaseError("Failed to retrieve comment tagged users", {
-        operation: "getCommentTaggedUsers",
-        orderId,
-        commentId,
-        taggedUserIds,
         error,
       });
     }

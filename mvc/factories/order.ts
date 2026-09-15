@@ -3,27 +3,20 @@ import {
   type TOrderSchema,
   type TCreateOrderFormSchema,
   type TUpdateOrderFormSchema,
-  type TCreateOrderCommentSchema,
   orderSchema,
   createOrderFormSchema,
   updateOrderFormSchema,
-  createOrderCommentSchema,
 } from "../../shared/utils/schemas.zod";
 
 import { BaseFactory } from "./base";
 import { OrderEntity } from "../entities/order";
 import { MenuItemEntity, OrderedItemEntity } from "../entities/item";
 import { ApplicationError } from "../errors.appwide";
-import type {
-  OrderCommentModel,
-  OrderLogModel,
-  OrderModel,
-} from "../repository/order";
+import type { OrderLogModel, OrderModel } from "../repository/order";
 
 type TOrderDTO = Omit<TOrderSchema, "total"> & { customerId: string };
 type TCreateOrderDTO = TCreateOrderFormSchema;
 type TUpdateOrderDTO = TUpdateOrderFormSchema;
-type TCreateOrderCommentDTO = TCreateOrderCommentSchema;
 
 export class OrderFactory extends BaseFactory<TOrderDTO, OrderEntity> {
   static hasRequestedDelivery(fee: number | string | null | undefined) {
@@ -136,29 +129,6 @@ export class OrderFactory extends BaseFactory<TOrderDTO, OrderEntity> {
     }
   }
 
-  public validateCreateComment(data: unknown): TCreateOrderCommentDTO {
-    try {
-      const parsedData = createOrderCommentSchema.safeParse(data);
-      if (parsedData.success) return parsedData.data;
-      throw new ApplicationError("Validation failed", {
-        issues: parsedData.error.issues,
-        input: JSON.stringify(data),
-        source: "mvc.factories.order.OrderFactory.validateCreateComment",
-      });
-    } catch (error) {
-      if (error instanceof ApplicationError) throw error;
-      else
-        throw new ApplicationError(
-          "Unknown error occurred during validation of create order comment",
-          {
-            originalError: error,
-            input: data,
-            source: "mvc.factories.order.OrderFactory.validateCreateComment",
-          },
-        );
-    }
-  }
-
   static fromModel(model: OrderModel): OrderEntity {
     return new OrderEntity(
       model.id,
@@ -222,28 +192,6 @@ export class OrderLogFactory extends OrderFactory {
       orderId: model.id,
       message: log.message,
       createdAt: log.createdAt,
-    }));
-  }
-}
-
-export class OrderCommentFactory extends OrderFactory {
-  static fromOrderPreview(
-    model: TOrderPreviewRepositoryModel,
-    options?: {
-      taggedUserId?: string[];
-    },
-  ): OrderCommentModel[] {
-    return model.orderComments.map((comment) => ({
-      id: comment.id,
-      source_id: comment.source || null,
-      orderId: model.id,
-      userId: comment.user?.id || "UNKNOWN_USER_ID",
-      user_name: comment.user?.name || "UNKNOWN_USER_NAME",
-      comment: comment.comment,
-      likedCount: comment.likedCount,
-      taggedUserId: options?.taggedUserId || [],
-      createdAt: comment.createdAt,
-      updatedAt: new Date(),
     }));
   }
 }

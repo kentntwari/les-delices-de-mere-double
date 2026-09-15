@@ -1,18 +1,10 @@
 import { BaseMapper } from "./base";
 
-import {
-  OrderEntity,
-  OrderCommentEntity,
-  OrderLogEntity,
-} from "../entities/order";
+import { OrderEntity, OrderLogEntity } from "../entities/order";
 import { OrderedItemEntity } from "../entities/item";
 import { OrderFactory } from "../factories/order";
 
-import type {
-  OrderModel,
-  OrderCommentModel,
-  OrderLogModel,
-} from "../repository/order";
+import type { OrderModel, OrderLogModel } from "../repository/order";
 import type { TOrderSchema } from "../../shared/utils/schemas.zod";
 
 export type TOrderDTO = TOrderSchema & {
@@ -21,22 +13,6 @@ export type TOrderDTO = TOrderSchema & {
 };
 
 export type TOrderLogDTO = Pick<OrderLogEntity, "message" | "createdAt">;
-
-export type TOrderCommentDTO = Pick<
-  OrderCommentEntity,
-  "id" | "sourceId" | "comment" | "userName" | "likedCount" | "createdAt"
->;
-
-type TTaggedUserId = string;
-export type TOrderCommentDetailsDTO = {
-  id: string;
-  user_name: string | undefined;
-  source_comment: string | null;
-  comment: string;
-  taggedUsers: TTaggedUserId[];
-  likedCount: number;
-  createdAt: string;
-};
 
 export class OrderMapper extends BaseMapper<
   OrderEntity,
@@ -140,57 +116,5 @@ export class OrderMapper extends BaseMapper<
 
   toLogDtoList(entities: OrderLogEntity[]): TOrderLogDTO[] {
     return entities.map((entity) => this.toLogDto(entity));
-  }
-
-  toCommentEntity(data: OrderCommentModel): OrderCommentEntity {
-    const e = new OrderCommentEntity(
-      data.id,
-      data.comment,
-      data.orderId,
-      data.userId,
-      data.createdAt.toISOString(),
-    );
-
-    e.userName = data.user_name || "";
-    e.sourceId = data.source_id || null;
-    e.taggedUsers = data.taggedUserId;
-    e.likedCount = data.likedCount;
-
-    return e;
-  }
-
-  fromCommentModel(model: OrderCommentModel): TOrderCommentDetailsDTO {
-    return {
-      id: model.id,
-      comment: model.comment,
-      source_comment: null,
-      createdAt: model.createdAt.toISOString(),
-      likedCount: model.likedCount,
-      taggedUsers: [],
-      user_name: model.user_name || undefined,
-    };
-  }
-
-  fromCommentModelList(models: OrderCommentModel[]): TOrderCommentDetailsDTO[] {
-    return models.map((model) => this.fromCommentModel(model));
-  }
-
-  toCommentEntityList(data: OrderCommentModel[]): OrderCommentEntity[] {
-    return data.map((comment) => this.toCommentEntity(comment));
-  }
-
-  toCommentDto(entity: OrderCommentEntity): TOrderCommentDTO {
-    return {
-      id: entity.id,
-      comment: entity.comment,
-      sourceId: entity.sourceId,
-      userName: entity.userName,
-      likedCount: entity.likedCount,
-      createdAt: entity.createdAt,
-    };
-  }
-
-  toCommentDtoList(entities: OrderCommentEntity[]): TOrderCommentDTO[] {
-    return entities.map((entity) => this.toCommentDto(entity));
   }
 }

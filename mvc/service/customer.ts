@@ -2,12 +2,10 @@ import { BaseService } from "./base";
 
 import { CustomerRepository } from "../repository/customer";
 
-import { CustomerMapper } from "../mapper/customer";
+import { CustomerMapper, type TCustomerDTO } from "../mapper/customer";
 import { CustomerFactory } from "../factories/customer";
 import { CustomerEntity } from "../entities/customer";
 import { CustomerTransformer } from "../transformers/customer";
-
-import { type TCustomerSchema as TCustomerDTO } from "../../shared/utils/schemas.zod";
 
 export class CustomerService extends BaseService {
   constructor(

@@ -1,30 +1,11 @@
 import { OrderedItemEntity } from "./item";
-import {
-  type OrderModel,
-  type OrderCommentModel,
-  type OrderLogModel,
-} from "../repository/order";
-import { UserEntity } from "./user";
+import { type OrderModel, type OrderLogModel } from "../repository/order";
 
 interface IOrderEntity extends Pick<OrderModel, "id" | "customerId"> {}
 interface IOrderLogEntity extends Omit<
   OrderLogModel,
   "orderId" | "createdAt"
 > {}
-interface IOrderCommentEntity extends Omit<
-  OrderCommentModel,
-  | "user_name"
-  | "source_id"
-  | "replies"
-  | "taggedUserId"
-  | "likedBy"
-  | "likedCount"
-  | "createdAt"
-> {}
-
-interface IOrderCommentOptions {
-  user: UserEntity;
-}
 
 export class OrderLogEntity implements IOrderLogEntity {
   constructor(
@@ -32,58 +13,6 @@ export class OrderLogEntity implements IOrderLogEntity {
     public readonly message: string,
     public readonly createdAt: string,
   ) {}
-}
-
-export class OrderCommentEntity implements IOrderCommentEntity {
-  protected _userName: string | undefined;
-  private _taggedUsers: string[] = [];
-  private _likedBy: string[] = [];
-  private _likedCount: number = 0;
-  private _sourceId: string | null = null;
-
-  constructor(
-    public readonly id: string,
-    public readonly comment: string,
-    public readonly orderId: string,
-    public readonly userId: string | null,
-    public readonly createdAt: string,
-    private options: IOrderCommentOptions = {
-      user: new UserEntity("", "", "", "", "USER"),
-    },
-  ) {}
-
-  get userName(): string | undefined {
-    return this._userName;
-  }
-
-  get sourceId(): string | null {
-    return this._sourceId;
-  }
-
-  set sourceId(id: string | null) {
-    this._sourceId = id;
-  }
-
-  set userName(name: string) {
-    this.options.user.fullName = name;
-    this._userName = this.options.user.fullName;
-  }
-
-  get likedCount(): number {
-    return this._likedCount;
-  }
-
-  set likedCount(count: number) {
-    this._likedCount = count;
-  }
-
-  get taggedUsers(): string[] {
-    return this._taggedUsers;
-  }
-
-  set taggedUsers(users: UserEntity["id"][]) {
-    this._taggedUsers = users;
-  }
 }
 
 export class OrderEntity implements IOrderEntity {

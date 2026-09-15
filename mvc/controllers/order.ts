@@ -9,20 +9,13 @@ import {
 } from "./base";
 
 import { OrderService } from "../service/order";
-import { UserService } from "../service/user";
 
 import {
   OrderMapper,
-  type TOrderCommentDTO,
   type TOrderDTO,
   type TOrderLogDTO,
-  type TOrderCommentDetailsDTO,
 } from "../mapper/order";
 import { OrderTransformer } from "../transformers/order";
-
-interface IOrderControllerOptions {
-  userService: UserService;
-}
 
 export class OrderController extends BaseController {
   protected originator_user_id: string = "UNKNOWN_USER_ID";
@@ -31,9 +24,6 @@ export class OrderController extends BaseController {
     req: Request,
     private service: OrderService = new OrderService(),
     private mapper: OrderMapper = new OrderMapper(),
-    private options: IOrderControllerOptions = {
-      userService: new UserService(),
-    },
   ) {
     super(req);
   }
@@ -173,53 +163,11 @@ export class OrderController extends BaseController {
     }
   }
 
-  async createComment(orderId: string) {
-    try {
-      const user = await this.options.userService.readUser(
-        this.originator_user_id,
-      );
-
-      if (!user) {
-        this.logError(new Error("User not found"), {
-          origin: "controllers.order.createComment",
-          orderId,
-          userId: this.originator_user_id,
-        });
-        return new BadRequestResponse("User not found");
-      }
-
-      return new JsonResponse({
-        data: await this.service.createComment(
-          orderId,
-          user.id,
-          await this.getBody(),
-        ),
-      });
-    } catch (error) {
-      this.logError(error, {
-        origin: "controllers.order.createComment",
-        orderId,
-      });
-      return this.mapErrorResponse(error, {
-        origin: "controllers.order.createComment",
-        orderId,
-      });
-    }
-  }
-
   async handleIntent(
     intent: "update-order",
     orderId: string,
   ): Promise<
     | JsonResponse<{ data: TOrderDTO }>
-    | BadRequestResponse
-    | InternalServerErrorResponse
-  >;
-  async handleIntent(
-    intent: "get-comments",
-    orderId: string,
-  ): Promise<
-    | JsonResponse<{ data: TOrderCommentDTO[] }>
     | BadRequestResponse
     | InternalServerErrorResponse
   >;
@@ -256,14 +204,6 @@ export class OrderController extends BaseController {
     | JsonResponse<{
         data: ReturnType<typeof OrderTransformer.toDeliveryDetails>;
       }>
-    | BadRequestResponse
-    | InternalServerErrorResponse
-  >;
-  async handleIntent(
-    intent: "get-order-comments-details",
-    orderId: string,
-  ): Promise<
-    | JsonResponse<{ data: TOrderCommentDetailsDTO[] }>
     | BadRequestResponse
     | InternalServerErrorResponse
   >;
@@ -318,8 +258,6 @@ export class OrderController extends BaseController {
     orderId: string,
   ): Promise<
     | JsonResponse<{ data: TOrderDTO }>
-    | JsonResponse<{ data: TOrderCommentDTO[] }>
-    | JsonResponse<{ data: TOrderCommentDTO }>
     | JsonResponse<{ data: TOrderLogDTO[] }>
     | JsonResponse<{ data: { id: string } }>
     | JsonResponse<{
@@ -339,24 +277,6 @@ export class OrderController extends BaseController {
     switch (intent) {
       case "update-order": {
         return await this.update();
-      }
-
-      case "get-comments": {
-        try {
-          const comments = await this.service.listComments(orderId);
-          return new JsonResponse({
-            data: this.mapper.toCommentDtoList(comments),
-          });
-        } catch (error) {
-          this.logError(error, {
-            origin: "controllers.order.handleIntent.get-comments",
-            orderId,
-          });
-          return this.mapErrorResponse(error, {
-            origin: "controllers.order.handleIntent.get-comments",
-            orderId,
-          });
-        }
       }
 
       case "get-logs": {
@@ -500,24 +420,6 @@ export class OrderController extends BaseController {
           });
           return this.mapErrorResponse(error, {
             origin: "controllers.order.handleIntent.get-order-customer",
-            orderId,
-          });
-        }
-      }
-
-      case "get-order-comments-details": {
-        try {
-          const details = await this.service.listCommentsDetails(orderId);
-          return new JsonResponse({
-            data: details,
-          });
-        } catch (error) {
-          this.logError(error, {
-            origin: "controllers.order.handleIntent.get-order-comments-details",
-            orderId,
-          });
-          return this.mapErrorResponse(error, {
-            origin: "controllers.order.handleIntent.get-order-comments-details",
             orderId,
           });
         }

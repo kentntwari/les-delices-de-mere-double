@@ -3,23 +3,20 @@ import type {
   TUpdateOrderFormSchema,
 } from "../../shared/utils/schemas.zod";
 import { CustomerFactory } from "../factories/customer";
-import {
-  OrderCommentFactory,
-  OrderFactory,
-  OrderLogFactory,
-} from "../factories/order";
+import { OrderFactory, OrderLogFactory } from "../factories/order";
+import { OrderCommentFactory } from "../factories/comment";
 import { CustomerMapper } from "../mapper/customer";
 import { OrderMapper } from "../mapper/order";
+import { OrderCommentMapper } from "../mapper/comment";
 
 import type {
-  IDbOrderComment,
-  OrderCommentModel,
   OrderCountMetadataModel,
   OrderDeliveryDetailsModel,
   OrderPreviewModel,
 } from "../repository/order";
 
 const orderMapper = new OrderMapper();
+const orderCommentMapper = new OrderCommentMapper();
 const cxMapper = new CustomerMapper();
 export class OrderTransformer {
   private static hasRequestedDelivery(fee: number | string | null | undefined) {
@@ -74,7 +71,7 @@ export class OrderTransformer {
   static toPreview(model: OrderPreviewModel) {
     if (!model) return null;
     const o = orderMapper.toEntity(OrderFactory.fromPreview(model));
-    const b = orderMapper.toCommentEntityList(
+    const b = orderCommentMapper.toEntityList(
       OrderCommentFactory.fromOrderPreview(model),
     );
     const l = orderMapper.toLogEntityList(
@@ -85,25 +82,11 @@ export class OrderTransformer {
       order: orderMapper.toDto(o),
       customer: cxMapper.toDto(cx),
       logs: orderMapper.toLogDtoList(l),
-      comments: orderMapper.toCommentDtoList(b),
+      comments: orderCommentMapper.toDtoList(b),
       timeline: {
         createdAt: model.createdAt.toISOString(),
         updatedAt: model.updatedAt.toISOString(),
       },
-    };
-  }
-
-  static toCommentModel(data: IDbOrderComment): OrderCommentModel {
-    return {
-      id: data.id,
-      source_id: data.source ?? null,
-      comment: data.comment,
-      createdAt: data.createdAt,
-      orderId: data.orderId,
-      userId: data.userId,
-      user_name: data.user?.name ?? null,
-      likedCount: data.likedCount,
-      taggedUserId: data.taggedUserId,
     };
   }
 }
