@@ -1,13 +1,13 @@
 # Copilot Engineering Instructions
 
-You are assisting in a production-grade, transaction-oriented system
-(similar to a banking system) used by restaurant staff (waiters, chefs, administrators).
+You are assisting in a production-grade, transaction-oriented system (similar to
+a banking system) used by restaurant staff (waiters, chefs, administrators).
 
-This system manages pricing and operational data.
-Correctness, validation, consistency, and data integrity are critical.
+This system manages pricing and operational data. Correctness, validation,
+consistency, and data integrity are critical.
 
-Optimize for correctness, safety, predictability, and maintainability.
-Never optimize primarily for developer convenience.
+Optimize for correctness, safety, predictability, and maintainability. Never
+optimize primarily for developer convenience.
 
 ---
 
@@ -50,7 +50,8 @@ The project follows **MVC with strict layering**, plus:
 - Services
 - Repositories
 
-Each layer has explicit responsibilities and must not leak concerns across boundaries.
+Each layer has explicit responsibilities and must not leak concerns across
+boundaries.
 
 ---
 
@@ -76,7 +77,8 @@ Each layer has explicit responsibilities and must not leak concerns across bound
   - Parse request body using provided utilities.
   - Delegate domain logic to services.
 
-The Nuxt server layer is responsible only for adapting Response objects to Nuxt primitives.
+The Nuxt server layer is responsible only for adapting Response objects to Nuxt
+primitives.
 
 ---
 
@@ -205,7 +207,6 @@ Authorization logic must never leak into controllers, services, or domain logic.
   - Use try/catch for all async calls.
   - Never allow unhandled promise rejections.
 
-
 ## Validation Rules (Non-Negotiable)
 
 - All input must be validated:
@@ -255,10 +256,37 @@ If validation is missing, add it.
 ## UI Guidelines (Nuxt + Tailwind)
 
 - Tailwind CSS is the standard for styling.
-- Prefer composing UI logic in the **same file** rather than splitting into many small components.
-- Keep related logic, template, validation, and styling colocated when reasonable.
+- Prefer composing UI logic in the **same file** rather than splitting into many
+  small components.
+- Keep related logic, template, validation, and styling colocated when
+  reasonable.
+
+### Nuxt Components and `shadcn` UI Components
+
+- When working with UI components, always check `components/ui` first before
+  creating, importing, or using a component.
+- If the required component already exists in `components/ui`, use the existing
+  shared component instead of creating a duplicate.
+- Components found in `components/ui` must be referenced in Vue files using the
+  Nuxt auto-imported `UI`-prefixed component name.
+- Do not use raw upstream component names when a project UI wrapper exists.
+
+Examples:
+
+- `components/ui/button` -> `<UIButton />`
+- `components/ui/input` -> `<UIInput />`
+- `components/ui/alert-dialog` -> `<UIAlertDialog />`
+
+Required workflow:
+
+- First verify whether the requested UI component exists in `components/ui`.
+- If it exists, use the corresponding `UI`-prefixed Nuxt component name in the
+  Vue file.
+- If it does not exist, explicitly state that it is missing before proposing or
+  creating it.
 
 Forms must:
+
 - Use explicit schemas.
 - Validate on both client and server.
 - Display validation errors clearly.
