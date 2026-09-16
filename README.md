@@ -1,75 +1,64 @@
-# Nuxt Minimal Starter
+# Les Delices De Mere Double
 
-Look at the [Nuxt documentation](https://nuxt.com/docs/getting-started/introduction) to learn more.
+This repository is now an npm-workspaces Turborepo monorepo.
+
+## Workspace Layout
+
+```text
+apps/
+	web/      Nuxt application
+	worker/   TypeScript worker scaffold with BullMQ
+packages/
+	db/       Prisma schema, generation, and database client
+	shared/   MVC layer, shared types, Zod schemas, and shared utilities
+```
 
 ## Setup
 
-Make sure to install dependencies:
+Install all workspace dependencies from the repository root:
 
 ```bash
-# npm
 npm install
-
-# pnpm
-pnpm install
-
-# yarn
-yarn install
-
-# bun
-bun install
 ```
 
-## Development Server
+The root `postinstall` runs Prisma generation for `@repo/db` and Nuxt prepare
+for `@repo/web`.
 
-Start the development server on `http://localhost:3000`:
+## Common Commands
+
+Run the web app and worker dev tasks through Turbo:
 
 ```bash
-# npm
 npm run dev
-
-# pnpm
-pnpm dev
-
-# yarn
-yarn dev
-
-# bun
-bun run dev
 ```
 
-## Production
-
-Build the application for production:
+Run the full workspace typecheck:
 
 ```bash
-# npm
+npm run typecheck
+```
+
+Build every package through Turbo:
+
+```bash
 npm run build
-
-# pnpm
-pnpm build
-
-# yarn
-yarn build
-
-# bun
-bun run build
 ```
 
-Locally preview production build:
+Preview the Nuxt app:
 
 ```bash
-# npm
 npm run preview
-
-# pnpm
-pnpm preview
-
-# yarn
-yarn preview
-
-# bun
-bun run preview
 ```
 
-Check out the [deployment documentation](https://nuxt.com/docs/getting-started/deployment) for more information.
+Regenerate Prisma client only:
+
+```bash
+npm run db:generate
+```
+
+## Package Notes
+
+- `@repo/web` depends on `@repo/shared` and `@repo/db`.
+- `@repo/worker` is scaffolded with `BullMQ` and ready for queue implementation.
+- `@repo/shared` owns the migrated MVC code and shared validation/contracts.
+- `@repo/db` owns Prisma and exports the shared database client entry point.

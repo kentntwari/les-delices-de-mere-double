@@ -1,0 +1,30 @@
+{
+  "extends": "../../tsconfig.base.json",
+  // https://nuxt.com/docs/guide/concepts/typescript
+  "files": [],
+  "references": [
+    {
+      "path": "./.nuxt/tsconfig.app.json"
+    },
+    {
+      "path": "./.nuxt/tsconfig.server.json"
+    },
+    {
+      "path": "./.nuxt/tsconfig.shared.json"
+    },
+    {
+      "path": "./.nuxt/tsconfig.node.json"
+    }
+  ],
+  "compilerOptions": {
+    "moduleResolution": "Bundler",
+    "paths": {
+      "@repo/db": ["../../packages/db/src/index.ts"],
+      "@repo/shared": ["../../packages/shared/types/index.ts"],
+      "@repo/shared/*": ["../../packages/shared/*"],
+      "@repo/shared//*": ["../../packages/shared/mvc/*"]
+    }
+  },
+  "exclude": ["node_modules", "dist", "build", "**/*.spec.ts", "coverage"],
+  "disableSizeLimit": true
+}

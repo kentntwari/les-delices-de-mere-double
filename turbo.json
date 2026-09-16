@@ -1,0 +1,30 @@
+{
+  "$schema": "https://turbo.build/schema.json",
+  "globalEnv": ["NUXT_*", "UPSTASH_*", "CLERK_*", "DATABASE_*"],
+  "tasks": {
+    "build": {
+      "dependsOn": ["^build"],
+      "outputs": ["dist/**", ".nuxt/**", ".output/**", "build/**"]
+    },
+    "dev": {
+      "cache": false,
+      "persistent": true,
+    },
+    "generate": {
+      "dependsOn": ["^generate"],
+      "outputs": [".output/public/**"]
+    },
+    "prepare": {
+      "cache": false,
+      "outputs": [".nuxt/**"]
+    },
+    "preview": {
+      "cache": false,
+      "persistent": true
+    },
+    "typecheck": {
+      "dependsOn": ["^typecheck"],
+      "outputs": []
+    }
+  }
+}

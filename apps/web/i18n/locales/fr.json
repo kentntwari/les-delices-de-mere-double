@@ -1,0 +1,243 @@
+{
+  "welcome": "Bienvenue",
+  "signIn": "Connectez-vous pour commencer",
+  "links": {
+    "orders": "Commandes",
+    "customers": "Clients",
+    "menu": "Menu"
+  },
+  "banner": {
+    "pending-status": "Vous n'avez pas encore été entièrement autorisé à interagir avec l'application. Contactez votre administrateur pour plus d'informations."
+  },
+  "unauthorized": {
+    "heading": "Vous n'êtes pas censé être ici.",
+    "footer": "Contactez votre administrateur pour plus d'informations."
+  },
+  "errors": {
+    "user": {
+      "unauthorized": "Vous n'êtes pas autorisé à accéder à cette ressource.",
+      "forbidden": "Vous n'avez pas la permission d'accéder à cette ressource.",
+      "not-found": "Vos informations n'ont pas pu être trouvées.",
+      "status-rejected": "Votre accès a été refusé. Veuillez contacter votre administrateur pour plus d'informations."
+    }
+  },
+  "data": {
+    "no-orders": "Aucune commande ajoutée pour le moment",
+    "no-customers": "Aucun client ajouté pour le moment",
+    "no-menu-items": "Aucun article ajouté pour le moment"
+  },
+  "components": {
+    "button": {
+      "create-new": "Créer Nouveau"
+    },
+    "order": {
+      "create-panel": {
+        "title": "Créer une Nouvelle Commande",
+        "menu": {
+          "no-menu-header": "Impossible de créer une commande",
+          "no-items": "Aucun article de menu trouvé.",
+          "add-item-prompt": "Avant de pouvoir créer une commande, vous devez d'abord ajouter au moins un article à votre menu.",
+          "no-menu-link": " Aller au Menu"
+        },
+        "items-list": {
+          "menu-header": "{item-count} articles ajoutés",
+          "no-items": "Aucun article ajouté à la commande pour le moment.",
+          "button-add-items": "Ajouter Article",
+          "remove-item": "Supprimer Article",
+          "remove-all": "Supprimer tout"
+        },
+        "customer-details": {
+          "select-btn": "Sélectionner un client existant",
+          "create-btn-without-priors": "Créer nouveau",
+          "create-btn": "Créer nouveau client",
+          "form": {
+            "full-name": "Nom complet du client",
+            "phone-number": "Numéro de téléphone du client",
+            "whatsapp-number": "Numéro WhatsApp du client",
+            "is-same-as-whatsapp": "Identique au numéro WhatsApp",
+            "email-address": "Courriel du client",
+            "choose-existing-customer": "Choisir un client existant à la place"
+          }
+        },
+        "delivery-instructions": {
+          "form": {
+            "is-home-address": "Ceci est l'adresse principale du client"
+          },
+          "caution": {
+            "valid-address": "Seules les adresses canadiennes sont acceptées",
+            "fee-disclaimer": "Des frais de livraison minimum de 10$ seront appliqués. Vous pouvez modifier le montant à l'écran suivant"
+          }
+        },
+        "preview": {
+          "items-count": "{count} articles commandés",
+          "labels": {
+            "delivery-requested": "Livraison demandée",
+            "delivery-fee": "Frais de livraison",
+            "delivery-address": "Adresse de livraison",
+            "customer-info": "Informations client",
+            "total-cost": "Coût total"
+          },
+          "button": {
+            "modify": "modifier",
+            "is-delivery": "oui",
+            "is-no-delivery": "non"
+          }
+        },
+        "submit-button": {
+          "final": "Créer",
+          "next": "Continuer"
+        },
+        "restart-button": "Refaire"
+      },
+      "preview-panel": {
+        "title": "Aperçu de la commande",
+        "nested-header": {
+          "delivery-title": "Commandé par: {customerName}",
+          "delivery-options": {
+            "requested": "Le client demande une livraison",
+            "not-requested": "Le client ne demande pas de livraison"
+          }
+        },
+        "buttons": {
+          "view-customer-info": "Voir détails du client",
+          "mark-as-paid": "Marquer payé"
+        }
+      },
+      "editor-panel": {
+        "title": "Modifier commande #{orderId}",
+        "ticker": {
+          "total-items": "{count} articles trouvés",
+          "removed-items": "{count} articles supprimés",
+          "added-items": "{count} articles ajoutés"
+        },
+        "buttons": {
+          "save-changes": "Enregistrer",
+          "cancel": "Annuler"
+        },
+        "info": {
+          "description": "Avis importants",
+          "notice-1": "Seuls les articles et les options de livraison peuvent être modifiés",
+          "notice-2": "Pour plus d'options de modification, développez les détails de la commande",
+          "notice-3": "L'adresse de livraison a été modifiée"
+        }
+      },
+      "menu": {
+        "form": {
+          "label": "Étiquette",
+          "title": "Titre de l'article du menu",
+          "submit-button": "Enregistrer"
+        }
+      },
+      "alerts": {
+        "generic": {
+          "title": "Êtes-vous absolument sûr?",
+          "description": "Cette action ne peut pas être annulée.",
+          "cancel-button": "Annuler",
+          "confirm-button": "Continuer"
+        },
+        "order": {
+          "restart": {
+            "title": "Recommencer la création de la commande?",
+            "description": "Toutes les informations saisies seront perdues.",
+            "cancel-button": "Annuler",
+            "confirm-button": "Continuer"
+          },
+          "cancel-editing": {
+            "title": "Annuler la modification de la commande?",
+            "description": "Toutes les modifications non enregistrées seront perdues.",
+            "cancel-button": "Annuler",
+            "confirm-button": "Continuer"
+          },
+          "change-order-status": {
+            "title": "Changer le statut de la commande?",
+            "description": "Cette action ne peut pas être annulée. Le statut de la commande sera changé.",
+            "cancel-button": "Annuler",
+            "confirm-button": "Continuer"
+          },
+          "revert-payment-status": {
+            "title": "Revenir à non payé?",
+            "description": "Cette action ne peut pas être annulée. Le statut de paiement de la commande sera défini sur non payé.",
+            "cancel-button": "Annuler",
+            "confirm-button": "Continuer"
+          },
+          "delete-order": {
+            "title": "Supprimer cette commande?",
+            "description": "Cette action ne peut pas être annulée. La commande sera définitivement supprimée.",
+            "cancel-button": "Annuler",
+            "confirm-button": "Continuer"
+          },
+          "delete-items": {
+            "title": "Supprimer les articles sélectionnés?",
+            "description": "Cette action ne peut pas être annulée.",
+            "cancel-button": "Annuler",
+            "confirm-button": "Continuer"
+          }
+        },
+        "menu": {
+          "delete-item": {
+            "title": "Supprimer cet article?",
+            "description": "Cette action ne peut pas être annulée.",
+            "cancel-button": "Annuler",
+            "confirm-button": "Continuer"
+          }
+        }
+      }
+    },
+    "pages": {
+      "orders": {
+        "header-title": "{orders-count} Commandes effectuées",
+        "no-orders": "Aucune commande trouvée",
+        "order-card": {
+          "view-details": "Voir les détails",
+          "status-label": "Statut",
+          "item-count": "{count} articles"
+        }
+      },
+      "menu": {
+        "header-title": "Articles ajoutés",
+        "item-card": {
+          "context-menu": {
+            "delete-item": "Supprimer",
+            "edit-item": "Modifier",
+            "edit-item-title": "Modifier le titre",
+            "edit-item-pricing": "Modifier le prix"
+          }
+        }
+      }
+    }
+  },
+  "pages": {
+    "orders": {
+      "header-title": "{orders-count} Commandes effectuées",
+      "no-orders": "Aucune commande trouvée",
+      "order-card": {
+        "view-details": "Voir les détails",
+        "status-label": "Statut",
+        "item-count": "{count} articles"
+      }
+    },
+    "order": {
+      "items": {
+        "header-title": "{count} articles ajoutés"
+      },
+      "comments": {
+        "limit-reached": "Limite de commentaires atteinte. Aucun nouveau commentaire ne peut être envoyé",
+        "dialog": {
+          "header-title": "Commentaires"
+        }
+      }
+    },
+    "menu": {
+      "header-title": " {items-count} articles du menu ajoutés",
+      "no-items": "Aucun article trouvé",
+      "item-card": {
+        "context-menu": {
+          "delete-item": "Supprimer",
+          "edit-item": "Modifier",
+          "edit-item-title": "Modifier le titre",
+          "edit-item-pricing": "Modifier le prix"
+        }
+      }
+    }
+  }
+}

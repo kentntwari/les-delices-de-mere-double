@@ -1,0 +1,88 @@
+// https://nuxt.com/docs/api/configuration/nuxt-config
+
+import { resolve } from "node:path";
+import tailwindcss from "@tailwindcss/vite";
+
+export default defineNuxtConfig({
+  compatibilityDate: "2025-07-15",
+  sourcemap: false,
+  devtools: { enabled: true },
+  css: ["./app/assets/css/main.css"],
+  experimental: {
+    payloadExtraction: true,
+  },
+  runtimeConfig: {
+    upstash: {
+      redisUrl: process.env.UPSTASH_REDIS_REST_URL,
+      redisToken: process.env.UPSTASH_REDIS_REST_TOKEN,
+    },
+  },
+  nitro: {
+    devStorage: {
+      redis: {
+        driver: "fs",
+        base: "./data/app",
+      },
+    },
+    storage: {
+      cache: {
+        driver: "upstash",
+      },
+      redis: {
+        driver: "upstash",
+        base: "app:",
+        url: process.env.UPSTASH_REDIS_REST_URL,
+        token: process.env.UPSTASH_REDIS_REST_TOKEN,
+      },
+    },
+  },
+  routeRules: {
+    "/api/items/**": {
+      cache: { name: "items", maxAge: 60 * 60 * 24, swr: true },
+    },
+    "/api/orders": { cache: { name: "orders", maxAge: 20 * 60, swr: true } },
+    "/api/customers": {
+      cache: { name: "customers", maxAge: 60 * 60 * 24, swr: true },
+    },
+    "/api/users": { cache: { name: "users", maxAge: 60 * 60 * 24, swr: true } },
+  },
+  modules: [
+    "@pinia/nuxt",
+    "@formkit/auto-animate",
+    "@vee-validate/nuxt",
+    "@nuxtjs/i18n",
+    "@clerk/nuxt",
+    "shadcn-nuxt",
+    "@nuxt/icon",
+    "@vueuse/nuxt",
+    "@nuxt/hints",
+  ],
+  vite: {
+    plugins: [tailwindcss()],
+    server: {
+      allowedHosts: [".trycloudflare.com"],
+    },
+  },
+  icon: {
+    mode: "css",
+    cssLayer: "base",
+  },
+  shadcn: {
+    prefix: "UI",
+    componentDir: "@/components/ui",
+  },
+  i18n: {
+    defaultLocale: "en",
+    locales: [
+      { code: "en", name: "English", file: "en.json" },
+      { code: "fr", name: "Français", file: "fr.json" },
+    ],
+    strategy: "no_prefix",
+  },
+  imports: {
+    dirs: [
+      resolve(__dirname, "./shared/types"),
+      resolve(__dirname, "./shared/utils"),
+    ],
+  },
+});

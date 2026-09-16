@@ -1,25 +1,7 @@
 {
-  // https://nuxt.com/docs/guide/concepts/typescript
-  "files": [],
-  "references": [
-    {
-      "path": "./.nuxt/tsconfig.app.json"
-    },
-    {
-      "path": "./.nuxt/tsconfig.server.json"
-    },
-    {
-      "path": "./.nuxt/tsconfig.shared.json"
-    },
-    {
-      "path": "./.nuxt/tsconfig.node.json"
-    }
-  ],
+  "extends": "./tsconfig.base.json",
   "compilerOptions": {
-    "moduleResolution": "node",
-    "ignoreDeprecations": "6.0"
+    "noEmit": true
   },
-  "include": ["src/**/*"], // ONLY your source
-  "exclude": ["node_modules", "dist", "build", "**/*.spec.ts", "coverage"],
-  "disableSizeLimit": true
+  "include": []
 }
